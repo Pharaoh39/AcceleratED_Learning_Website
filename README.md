@@ -13,3 +13,7 @@ a kid-friendly video teleconferencing platform that will be able to support stud
   - Brett & Wilfredo
 - Authentication and Database
   - Nicholas
+
+## Resources
+
+The design mockup for the website is on Figma for now. The invite link is [here](https://www.figma.com/file/licWicz3p45o3ZzWaR2YVU/Education-Web-App?node-id=0%3A1).
