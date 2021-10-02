@@ -1,0 +1,69 @@
+:root {
+    --header-color: #E1E1E1;
+    --main-btn-color: #4198E9;
+    --main-btn-hover: #3b8ad4;
+    --main-btn-active: #2d69a1;
+    --light-txt-color: #f6f6f6;
+}
+
+body {
+    background-color: white;
+    margin: 0;
+    padding: 0;
+    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+}
+
+header {
+    padding: 20px;
+    width: 100%;
+    box-sizing: border-box;
+    background-color: var(--main-btn-color);
+    box-shadow: 0 5px 8px gray;
+    font-size: 36px;
+    font-weight: bold;
+    text-align: center;
+    border-bottom: solid 2px black;
+    color: var(--light-txt-color);
+}
+
+p {
+    margin: 50px auto;
+    max-width: 90%;
+    width: 800px;
+}
+
+.hCenter {
+    margin-left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+}
+
+.button {
+    margin-top: 50px;
+    padding: 10px 35px;
+    display: inline-block;
+    text-align: center;
+    background-color: var(--main-btn-color);
+    border: solid 2px black;
+    border-radius: 10px;
+    color: var(--light-txt-color);
+    font-size: 24px;
+    text-decoration: none;
+    cursor: pointer;
+}
+.button:hover {
+    background-color: var(--main-btn-hover);
+}
+.button:active {
+    background-color: var(--main-btn-active);
+}
+
+#video_element {
+    width: 500px;
+    min-height: 300px;
+    margin: 50px;
+    background-color: gray;
+    padding: 35px;
+    border: solid 2px black;
+    border-radius: 10px;
+}
