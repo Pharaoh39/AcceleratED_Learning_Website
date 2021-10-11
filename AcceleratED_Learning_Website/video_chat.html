@@ -3,17 +3,35 @@
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <title>Video Chat</title>
+        <title></title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="stylesheet" href="styles/style.css">
+        <link rel="stylesheet" href="styles/whiteboard.css">
     </head>
     <body>
-        <header>Video Chat</header>
-        <div class="hCenter">
+
+        <div class="grid-item title">
+            <p class="titleText">Tutoring Room 1</p>
+        </div>
+
+        <div class="grid-item canvasDiv">
+            <div id="drawBar"></div>
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <div class="grid-item video">
             <video autoplay="true" id="video_element"></video>
         </div>
-        <a href="index.html" class="button hCenter">Go Home</a>
+
+        <div class="grid-item chat">Chat</div>
+
+        <div class="controls">
+            <div class="grid-item bottomItem btn" id="backward"><--</div>
+            <div class="grid-item bottomItem" id="pageCount">0/0</div>
+            <div class="grid-item bottomItem btn" id="forward">--></div>
+            <div class="grid-item bottomItem btn" id="showCamera">Show Camera</div>
+        </div>
+
         <script src="scripts/video_chat.js" async defer></script>
     </body>
 </html>
