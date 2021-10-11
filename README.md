@@ -17,3 +17,13 @@ a kid-friendly video teleconferencing platform that will be able to support stud
 ## Resources
 
 The design mockup for the website is on Figma for now. The invite link is [here](https://www.figma.com/file/licWicz3p45o3ZzWaR2YVU/Education-Web-App?node-id=0%3A1).
+
+## Whiteboard
+Currently very buggy.
+Features include:
+- <kbd>Ctrl</kbd> + <kbd>Z</kbd> removes last edit on the page
+- Buttons on bottom to add new pages to the whiteboard
+- Color selection
+- Line tool
+- Pointer tool
+- Clear button
