@@ -45,12 +45,14 @@ let ctx = canvas.getContext("2d");
 
 var lastPoint;
 var canvasFunction = "pen";
+var penSize = 2;
 
 var pages = [];
 var currentPage = 0;
 var drawings = [];
 var currentLine = {
     color: activeColor,
+    lineWidth: penSize,
     points: []
 }
 
@@ -105,13 +107,13 @@ function line(e) {
         ctx.moveTo(lastPoint.x, lastPoint.y);
         ctx.lineTo(e.offsetX, e.offsetY);
         ctx.strokeStyle = activeColor;
-        ctx.lineWidth = 5;
+        ctx.lineWidth = penSize;
         ctx.lineCap = "round";
         ctx.stroke();
     } else {
         if(lastPoint != null) {
             //console.log(lastPoint);
-            currentLine = {color: activeColor, points: []};
+            currentLine = {color: activeColor, lineWidth: penSize, points: []};
             currentLine.points.push(lastPoint);
             currentLine.points.push({x: e.offsetX, y: e.offsetY});
             drawings.push(currentLine);
@@ -164,7 +166,7 @@ function pen(e) {
         // if newline
         if(!lastPoint) {
             drawings.push(currentLine);
-            currentLine = {color: activeColor, points: []};
+            currentLine = {color: activeColor, lineWidth: penSize, points: []};
             lastPoint = {x: e.offsetX, y: e.offsetY};
             currentLine.points.push(lastPoint);
             return;
@@ -174,7 +176,7 @@ function pen(e) {
         ctx.moveTo(lastPoint.x, lastPoint.y);
         ctx.lineTo(e.offsetX, e.offsetY);
         ctx.strokeStyle = activeColor;
-        ctx.lineWidth = 5;
+        ctx.lineWidth = penSize;
         ctx.lineCap = "round";
         ctx.stroke();
         lastPoint = {x: e.offsetX, y: e.offsetY};
@@ -186,7 +188,7 @@ function pen(e) {
 
 // redraws all lines and shapes stored on the specified page
 function redrawCanvas(page) {
-    console.log(page);
+    //console.log(page);
     for(let drawing of page) {
         //console.log(drawing);
         let lastPoint = null;
@@ -200,7 +202,7 @@ function redrawCanvas(page) {
                 ctx.lineTo(point.x, point.y);
                 ctx.strokeStyle = drawing.color;
                 //console.log("The color is " + drawing.color);
-                ctx.lineWidth = 5;
+                ctx.lineWidth = drawing.lineWidth;
                 ctx.lineCap = "round";
                 ctx.stroke();
                 lastPoint = point;
@@ -222,7 +224,7 @@ document.getElementById("backward").addEventListener("click", prevPage, false);
 function nextPage() {
     pages[currentPage] = drawings;
     let numPages = pages.length;
-    console.log(pages);
+    //console.log(pages);
     if(currentPage + 1 < numPages) {
         drawings = pages[currentPage + 1];
         redrawCanvas(drawings);
@@ -279,6 +281,7 @@ function populateDrawBar() {
         holder.appendChild(borderDiv);
     }
 
+    // clear button
     let borderDiv = document.createElement("div");
     borderDiv.classList.add("selectorIndicator");
     let dotDiv = document.createElement("div");
@@ -289,6 +292,7 @@ function populateDrawBar() {
     borderDiv.appendChild(dotDiv);
     document.getElementById("drawBar").appendChild(borderDiv);
 
+    // pointer button
     borderDiv = document.createElement("div");
     borderDiv.classList.add("selectorIndicator");
     dotDiv = document.createElement("div");
@@ -297,6 +301,7 @@ function populateDrawBar() {
     borderDiv.appendChild(dotDiv);
     document.getElementById("drawBar").appendChild(borderDiv);
 
+    // line button
     borderDiv = document.createElement("div");
     borderDiv.classList.add("selectorIndicator");
     dotDiv = document.createElement("div");
@@ -304,6 +309,17 @@ function populateDrawBar() {
     dotDiv.addEventListener("click", lineDraw, false);
     dotDiv.style.backgroundColor = activeColor;
     lineOption = dotDiv;
+    borderDiv.appendChild(dotDiv);
+    document.getElementById("drawBar").appendChild(borderDiv);
+
+    // line size button
+    borderDiv = document.createElement("div");
+    borderDiv.classList.add("selectorIndicator");
+    borderDiv.classList.add("selectorActive");
+    dotDiv = document.createElement("div");
+    dotDiv.classList.add("penSize");
+    dotDiv.style.backgroundColor = "grey";
+    dotDiv.addEventListener("click", lineSize, false);
     borderDiv.appendChild(dotDiv);
     document.getElementById("drawBar").appendChild(borderDiv);
 }
@@ -334,6 +350,25 @@ function lineDraw(e) {
     canvasFunction = "line";
     canvas.style.cursor = "default";
     menuItemActive(e);
+}
+
+function lineSize(e) {
+    let min = 2;
+    let max = 20;
+    /*let currentPenSize = e.currentTarget.innerWidth;
+    console.log(e.currentTarget);
+    console.log(currentPenSize);*/
+    // cannot seem to get the width of the object from the DOM
+    // it would be more accurate to get the current size instead of assuming they will always match up
+    if(penSize == max) {
+        e.currentTarget.style.width = min + "px";
+        e.currentTarget.style.height = min + "px";
+        penSize = min;
+    } else {
+        e.currentTarget.style.width = (penSize + 2) + "px";
+        e.currentTarget.style.height = (penSize + 2) + "px";
+        penSize = penSize + 1;
+    }
 }
 
 
