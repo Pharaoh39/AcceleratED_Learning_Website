@@ -44,15 +44,17 @@ var canvas = document.getElementById("canvas");
 let ctx = canvas.getContext("2d");
 
 var lastPoint;
-var canvasFunction = "pen";
+var canvasFunction;
 
 var pages = [];
 var currentPage = 0;
 var drawings = [];
+var textBoxes = [];
 var currentLine = {
     color: activeColor,
     points: []
 }
+changeCanvasFunction("pen");
 
 // resize the canvas based on the window size and center the whiteboard menu vertically in the canvas
 function resize() {
@@ -66,6 +68,9 @@ function resize() {
 // remove all elements from the convas
 function clearCanvas() {
     drawings = [];
+    for (const box of textBoxes){
+        box.remove();
+    }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
@@ -76,6 +81,7 @@ document.addEventListener('keydown', function(event) {
           drawings.pop();
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           redrawCanvas(drawings);
+          fillTextBoxes(textBoxes);
       }
     }
 });
@@ -95,6 +101,7 @@ function line(e) {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     redrawCanvas(drawings);
+    fillTextBoxes(textBoxes);
 
     if(e.buttons) {
         if(!lastPoint) {
@@ -110,7 +117,6 @@ function line(e) {
         ctx.stroke();
     } else {
         if(lastPoint != null) {
-            //console.log(lastPoint);
             currentLine = {color: activeColor, points: []};
             currentLine.points.push(lastPoint);
             currentLine.points.push({x: e.offsetX, y: e.offsetY});
@@ -126,6 +132,7 @@ var secondLastPoint = null;
 function pointer(e) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     redrawCanvas(drawings);
+    fillTextBoxes(textBoxes);
 
     var grd = ctx.createRadialGradient(e.offsetX, e.offsetY, 1, e.offsetX, e.offsetY, 10);
     grd.addColorStop(0, "red");
@@ -186,11 +193,8 @@ function pen(e) {
 
 // redraws all lines and shapes stored on the specified page
 function redrawCanvas(page) {
-    console.log(page);
     for(let drawing of page) {
-        //console.log(drawing);
         let lastPoint = null;
-        //console.log(drawing);
         for(let point of drawing.points) {
             if(!lastPoint) {
                 lastPoint = point;
@@ -199,7 +203,6 @@ function redrawCanvas(page) {
                 ctx.moveTo(lastPoint.x, lastPoint.y);
                 ctx.lineTo(point.x, point.y);
                 ctx.strokeStyle = drawing.color;
-                //console.log("The color is " + drawing.color);
                 ctx.lineWidth = 5;
                 ctx.lineCap = "round";
                 ctx.stroke();
@@ -209,6 +212,81 @@ function redrawCanvas(page) {
     }
 }
 
+//Creates text boxes which can be typed into and dragged around
+function textBox(e) {
+    var beingDragged = false;
+    var textBox = document.createElement('textarea');
+    textBox.classList.add("textBox");
+
+    textBox.cols = '3';
+    textBox.style.position = 'fixed';
+    textBox.style.left = (500) + 'px';
+    textBox.style.top = (500) + 'px';
+    textBox.style.outline = 'none';
+
+    textBox.addEventListener('textBox', resizeBox); //Change dimensions of text box depending on text
+
+    //Start dragging sequence
+    textBox.addEventListener('mousedown', function(e) {
+        beingDragged = true;
+        lastPoint = {x: e.offsetX, y: e.offsetY};
+    }, true);
+
+    //End dragging sequence
+    document.addEventListener('mouseup', function() {
+        beingDragged = false;
+        lastPoint = null;
+    }, true);
+
+    //Drag text box
+    document.addEventListener('mousemove', function(e) {
+        if (beingDragged) {
+            textBox.style.left = (e.clientX - lastPoint.x) + 'px';
+            textBox.style.top  = (e.clientY - lastPoint.y) + 'px';
+        }
+    }, true);
+
+    document.body.appendChild(textBox);
+
+    textBox.focus();
+    textBoxes.push(textBox);
+}
+
+//Draw the contents of the textboxes onto the canvas
+function fillTextBoxes(curTextBoxes) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    redrawCanvas(drawings);
+    ctx.font="16px monospace";
+    ctx.textBaseline = "top";
+    for (obj of curTextBoxes) {
+        var lineHeight = parseInt(window.getComputedStyle(obj).getPropertyValue('line-height'));
+        var borderWidth = parseInt(window.getComputedStyle(obj).getPropertyValue('border-width'));
+        var lines = obj.value.split('\n');
+        for (var i = 0; i<lines.length; i++) {
+            ctx.fillText(lines[i], parseInt(obj.style.left) - canvas.getBoundingClientRect().x + borderWidth, 
+            parseInt(obj.style.top) - canvas.getBoundingClientRect().y + borderWidth + i*lineHeight);
+        }
+    }
+}
+
+function resizeBox() {
+    this.style.height = 'auto';
+    this.style.height = (this.scrollHeight) + "px";
+    var lines = this.value.split('\n');
+    maxCols = Math.max(...lines.map(line => line.length));
+    if (this.value.length > 3) {
+        this.cols = maxCols;
+    }
+}
+
+//show all textboxes
+function overlay(e) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    redrawCanvas(drawings);
+    for (obj of textBoxes) {
+        obj.style.display = "inline-block"
+    }
+}
 
 /* ---------------------------------------------- */
 /* ---------- Javascript for Page menu ---------- */
@@ -220,33 +298,40 @@ document.getElementById("backward").addEventListener("click", prevPage, false);
 
 // loads the next page or creates a new page
 function nextPage() {
-    pages[currentPage] = drawings;
+    pages[currentPage] = {drawings: drawings, textBoxes: textBoxes};
     let numPages = pages.length;
+    console.log("test");
     console.log(pages);
     if(currentPage + 1 < numPages) {
-        drawings = pages[currentPage + 1];
+        drawings = pages[currentPage + 1].drawings;
+        textBoxes = pages[currentPage + 1].textBoxes;
         redrawCanvas(drawings);
+        fillTextBoxes(textBoxes);
     } else {
         clearCanvas();
     }
     currentPage += 1;
     document.getElementById("pageCount").textContent = (currentPage+1) + "/" + numPages;
+    console.log("test2");
 }
-
+ 
 // loads the previous page if possible
 function prevPage() {
-    pages[currentPage] = drawings;
+    pages[currentPage] = {drawings: drawings, textBoxes: textBoxes};
     let numPages = pages.length;
     if(currentPage - 1 >= 0) {
-        drawings = pages[currentPage - 1];
+        drawings = pages[currentPage - 1].drawings;
+        textBoxes = pages[currentPage - 1].textBoxes;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
+        fillTextBoxes(textBoxes);
     } else {
         return;
     }
     currentPage -= 1;
     document.getElementById("pageCount").textContent = (currentPage+1) + "/" + numPages;
 }
+
 
 
 /* ---------------------------------------------------- */
@@ -306,6 +391,28 @@ function populateDrawBar() {
     lineOption = dotDiv;
     borderDiv.appendChild(dotDiv);
     document.getElementById("drawBar").appendChild(borderDiv);
+
+    //Add textbox button
+    borderDiv = document.createElement("div");
+    borderDiv.classList.add("selectorIndicator");
+    dotDiv = document.createElement("div");
+    dotDiv.classList.add("colorDot");
+    dotDiv.style.backgroundColor = "grey";
+    dotDiv.textContent = "T";
+    dotDiv.addEventListener("click", addTextBox, false);
+    borderDiv.appendChild(dotDiv);
+    document.getElementById("drawBar").appendChild(borderDiv);
+
+    //Add overlay button
+    borderDiv = document.createElement("div");
+    borderDiv.classList.add("selectorIndicator");
+    dotDiv = document.createElement("div");
+    dotDiv.classList.add("colorDot");
+    dotDiv.style.backgroundColor = "grey";
+    dotDiv.textContent = "U";
+    dotDiv.addEventListener("click", showOverlay, false);
+    borderDiv.appendChild(dotDiv);
+    document.getElementById("drawBar").appendChild(borderDiv);
 }
 
 // indicates a menu item is selected by surrounding it by a circle
@@ -315,9 +422,21 @@ function menuItemActive(e) {
     activeDot.classList.add("selectorActive");
 }
 
+//Check if need to draw textBoxes onto canvas
+function changeCanvasFunction(newFunc) {
+    if((canvasFunction == 'overlay' || canvasFunction == 'textBox') && (newFunc != 'overlay' || newFunc == 'textBox')){
+        fillTextBoxes(textBoxes);
+        for (const obj of textBoxes) {
+            //Hide text boxes
+            obj.style.display = "none"
+        }
+    }
+    canvasFunction = newFunc;
+}
+
 // changes the pen color when drawing
 function changeDrawColor(e) {
-    canvasFunction = "pen";
+    changeCanvasFunction("pen");
     canvas.style.cursor = "default";
     menuItemActive(e);
     activeColor = e.currentTarget.style.backgroundColor;
@@ -325,15 +444,29 @@ function changeDrawColor(e) {
 }
 
 function pointerMenu(e) {
-    canvasFunction = "pointer";
+    changeCanvasFunction("pointer");
     menuItemActive(e);
     canvas.style.cursor = "none";
 }
 
 function lineDraw(e) {
-    canvasFunction = "line";
+    changeCanvasFunction("line");
     canvas.style.cursor = "default";
     menuItemActive(e);
+}
+
+function addTextBox(e) {
+    changeCanvasFunction("textBox");
+    canvas.style.cursor = "default";
+    menuItemActive(e);
+    textBox();
+}
+
+function showOverlay(e) {
+    changeCanvasFunction("overlay");
+    canvas.style.cursor = "default";
+    menuItemActive(e);
+    overlay();
 }
 
 
