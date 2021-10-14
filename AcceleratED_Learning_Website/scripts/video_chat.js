@@ -179,12 +179,11 @@ function circle(e) {
             return;
         }
         ctx.beginPath();
-        let radius = Math.sqrt(Math.pow(e.offsetX-lastPoint.x, 2) + Math.pow(e.offsetY-lastPoint.y, 2));
+        let radius = Math.floor(Math.sqrt(Math.pow(e.offsetX-lastPoint.x, 2) + Math.pow(e.offsetY-lastPoint.y, 2)));
         ctx.arc(lastPoint.x, lastPoint.y, radius, 0, 2*Math.PI);
         ctx.strokeStyle = activeColor;
         ctx.fillStyle = activeSecondaryColor;
         ctx.lineWidth = penSize;
-        ctx.lineCap = "round";
         ctx.fill();
         ctx.stroke();
     } else {
@@ -266,8 +265,13 @@ function pen(e) {
 function redrawCanvas(page) {
     //console.log(page);
     for(let drawing of page) {
-        if(drawing.type == "line" || drawing.type == "poly") redrawLine(drawing);
-        if(drawing.type == "rect") redrawRect(drawing);
+        if(drawing.type == "line" || drawing.type == "poly") {
+            redrawLine(drawing);
+        } else if(drawing.type == "rect") {
+            redrawRect(drawing);
+        } else if (drawing.type == "circle") {
+            redrawCircle(drawing);
+        }
     }
 }
 
@@ -293,6 +297,22 @@ function redrawLine(drawing) {
 function redrawRect(drawing) {
     ctx.beginPath();
     ctx.rect(drawing.points[0].x, drawing.points[0].y, drawing.points[1].x, drawing.points[1].y);
+    ctx.strokeStyle = drawing.color;
+    // HACK: bad workaround
+    try {
+        ctx.fillStyle = secondaryColors[drawColors.indexOf(rgb2hex(drawing.color))];
+    } catch {
+        ctx.fillStyle = secondaryColors[drawColors.indexOf(drawing.color)];
+    }
+    ctx.lineWidth = drawing.lineWidth;
+    ctx.fill();
+    ctx.stroke();
+}
+
+function redrawCircle(drawing) {
+    ctx.beginPath();
+    let radius = Math.sqrt(Math.pow(drawing.points[1].x, 2) + Math.pow(drawing.points[1].y, 2));
+    ctx.arc(drawing.points[0].x, drawing.points[0].y, radius, 0, 2*Math.PI);
     ctx.strokeStyle = drawing.color;
     // HACK: bad workaround
     try {
