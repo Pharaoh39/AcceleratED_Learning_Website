@@ -51,6 +51,7 @@ var pages = [];
 var currentPage = 0;
 var drawings = [];
 var currentLine = {
+    type: null,
     color: activeColor,
     lineWidth: penSize,
     points: []
@@ -84,12 +85,24 @@ document.addEventListener('keydown', function(event) {
 
 // function to handle the different functions for the differen whiteboard tools that require a mouse position
 function move(e) {
-    if(canvasFunction == "pen") {
-        pen(e);
-    } else if (canvasFunction == "pointer") {
-        pointer(e);
-    } else if (canvasFunction == "line") {
-        line(e);
+    switch(canvasFunction) {
+        case "pen":
+            pen(e);
+            break;
+        case "pointer":
+            pointer(e);
+            break;
+        case "line":
+            line(e);
+            break;
+        case "rect":
+            rectangle(e);
+            break;
+        case "circle":
+            circle(e);
+            break;
+        default:
+            pen(e);
     }
 }
 
@@ -113,9 +126,72 @@ function line(e) {
     } else {
         if(lastPoint != null) {
             //console.log(lastPoint);
-            currentLine = {color: activeColor, lineWidth: penSize, points: []};
+            currentLine = {type: "line", color: activeColor, lineWidth: penSize, points: []};
             currentLine.points.push(lastPoint);
             currentLine.points.push({x: e.offsetX, y: e.offsetY});
+            drawings.push(currentLine);
+        }
+        lastPoint = null;
+    }
+
+}
+
+
+function rectangle(e) {
+
+    /*ctx.clearRect(0, 0, canvas.width, canvas.height);
+    redrawCanvas(drawings);*/
+
+    if(e.buttons) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        redrawCanvas(drawings);
+        if(!lastPoint) {
+            lastPoint = {x: e.offsetX, y: e.offsetY};
+            return;
+        }
+        ctx.beginPath();
+        ctx.rect(lastPoint.x, lastPoint.y, e.offsetX-lastPoint.x, e.offsetY-lastPoint.y);
+        ctx.strokeStyle = activeColor;
+        ctx.fillStyle = activeSecondaryColor;
+        ctx.lineWidth = penSize;
+        ctx.lineCap = "round";
+        ctx.fill();
+        ctx.stroke();
+    } else {
+        if(lastPoint != null) {
+            currentLine = {type: "rect", color: activeColor, lineWidth: penSize, points: []};
+            currentLine.points.push(lastPoint);
+            currentLine.points.push({x: e.offsetX-lastPoint.x, y: e.offsetY-lastPoint.y});
+            drawings.push(currentLine);
+        }
+        lastPoint = null;
+    }
+
+}
+
+function circle(e) {
+
+    if(e.buttons) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        redrawCanvas(drawings);
+        if(!lastPoint) {
+            lastPoint = {x: e.offsetX, y: e.offsetY};
+            return;
+        }
+        ctx.beginPath();
+        let radius = Math.sqrt(Math.pow(e.offsetX-lastPoint.x, 2) + Math.pow(e.offsetY-lastPoint.y, 2));
+        ctx.arc(lastPoint.x, lastPoint.y, radius, 0, 2*Math.PI);
+        ctx.strokeStyle = activeColor;
+        ctx.fillStyle = activeSecondaryColor;
+        ctx.lineWidth = penSize;
+        ctx.lineCap = "round";
+        ctx.fill();
+        ctx.stroke();
+    } else {
+        if(lastPoint != null) {
+            currentLine = {type: "circle", color: activeColor, lineWidth: penSize, points: []};
+            currentLine.points.push(lastPoint);
+            currentLine.points.push({x: e.offsetX-lastPoint.x, y: e.offsetY-lastPoint.y});
             drawings.push(currentLine);
         }
         lastPoint = null;
@@ -166,7 +242,7 @@ function pen(e) {
         // if newline
         if(!lastPoint) {
             drawings.push(currentLine);
-            currentLine = {color: activeColor, lineWidth: penSize, points: []};
+            currentLine = {type: "poly", color: activeColor, lineWidth: penSize, points: []};
             lastPoint = {x: e.offsetX, y: e.offsetY};
             currentLine.points.push(lastPoint);
             return;
@@ -190,25 +266,43 @@ function pen(e) {
 function redrawCanvas(page) {
     //console.log(page);
     for(let drawing of page) {
-        //console.log(drawing);
-        let lastPoint = null;
-        //console.log(drawing);
-        for(let point of drawing.points) {
-            if(!lastPoint) {
-                lastPoint = point;
-            } else {
-                ctx.beginPath();
-                ctx.moveTo(lastPoint.x, lastPoint.y);
-                ctx.lineTo(point.x, point.y);
-                ctx.strokeStyle = drawing.color;
-                //console.log("The color is " + drawing.color);
-                ctx.lineWidth = drawing.lineWidth;
-                ctx.lineCap = "round";
-                ctx.stroke();
-                lastPoint = point;
-            }
+        if(drawing.type == "line" || drawing.type == "poly") redrawLine(drawing);
+        if(drawing.type == "rect") redrawRect(drawing);
+    }
+}
+
+function redrawLine(drawing) {
+    let lastPoint = null;
+    for(let point of drawing.points) {
+        if(!lastPoint) {
+            lastPoint = point;
+        } else {
+            ctx.beginPath();
+            ctx.moveTo(lastPoint.x, lastPoint.y);
+            ctx.lineTo(point.x, point.y);
+            ctx.strokeStyle = drawing.color;
+            //console.log("The color is " + drawing.color);
+            ctx.lineWidth = drawing.lineWidth;
+            ctx.lineCap = "round";
+            ctx.stroke();
+            lastPoint = point;
         }
     }
+}
+
+function redrawRect(drawing) {
+    ctx.beginPath();
+    ctx.rect(drawing.points[0].x, drawing.points[0].y, drawing.points[1].x, drawing.points[1].y);
+    ctx.strokeStyle = drawing.color;
+    // HACK: bad workaround
+    try {
+        ctx.fillStyle = secondaryColors[drawColors.indexOf(rgb2hex(drawing.color))];
+    } catch {
+        ctx.fillStyle = secondaryColors[drawColors.indexOf(drawing.color)];
+    }
+    ctx.lineWidth = drawing.lineWidth;
+    ctx.fill();
+    ctx.stroke();
 }
 
 
@@ -256,11 +350,15 @@ function prevPage() {
 /* ---------------------------------------------------- */
 
 
-const drawColors = ["#4198E9", "#E94B41", "#E9B041", "#44E941", "#B341E9"];
+const drawColors = ["#4198e9", "#e94b41", "#e9b041", "#44e941", "#b341e9"];
+const secondaryColors = ["#a3c4e3", "#eba4a0", "#ebd3a4", "#a0ed9f", "#d2a0eb"];
 
-var activeColor = "#4198E9";
+var activeColor = "#4198e9";
+var activeSecondaryColor = "#a3c4e3";
 var activeDot = null;
 var lineOption = null;
+var squareOption = null;
+var circleOption = null;
 
 // create all of the menu elements dynamically
 function populateDrawBar() {
@@ -312,6 +410,26 @@ function populateDrawBar() {
     borderDiv.appendChild(dotDiv);
     document.getElementById("drawBar").appendChild(borderDiv);
 
+    // rectangle button
+    borderDiv = document.createElement("div");
+    borderDiv.classList.add("selectorIndicator");
+    dotDiv = document.createElement("div");
+    dotDiv.classList.add("rectangle");
+    dotDiv.addEventListener("click", rectangleDraw, false);
+    squareOption = dotDiv;
+    borderDiv.appendChild(dotDiv);
+    document.getElementById("drawBar").appendChild(borderDiv);
+
+    // circle button
+    borderDiv = document.createElement("div");
+    borderDiv.classList.add("selectorIndicator");
+    dotDiv = document.createElement("div");
+    dotDiv.classList.add("circle");
+    dotDiv.addEventListener("click", circleDraw, false);
+    circleOption = dotDiv;
+    borderDiv.appendChild(dotDiv);
+    document.getElementById("drawBar").appendChild(borderDiv);
+
     // line size button
     borderDiv = document.createElement("div");
     borderDiv.classList.add("selectorIndicator");
@@ -337,7 +455,12 @@ function changeDrawColor(e) {
     canvas.style.cursor = "default";
     menuItemActive(e);
     activeColor = e.currentTarget.style.backgroundColor;
+    activeSecondaryColor = secondaryColors[drawColors.indexOf(rgb2hex(activeColor))];
     lineOption.style.backgroundColor = activeColor;
+    squareOption.style.borderColor = activeColor;
+    squareOption.style.backgroundColor = activeSecondaryColor;
+    circleOption.style.borderColor = activeColor;
+    circleOption.style.backgroundColor = activeSecondaryColor;
 }
 
 function pointerMenu(e) {
@@ -348,6 +471,18 @@ function pointerMenu(e) {
 
 function lineDraw(e) {
     canvasFunction = "line";
+    canvas.style.cursor = "default";
+    menuItemActive(e);
+}
+
+function rectangleDraw(e) {
+    canvasFunction = "rect";
+    canvas.style.cursor = "default";
+    menuItemActive(e);
+}
+
+function circleDraw(e) {
+    canvasFunction = "circle";
     canvas.style.cursor = "default";
     menuItemActive(e);
 }
@@ -371,6 +506,7 @@ function lineSize(e) {
     }
 }
 
+const rgb2hex = (rgb) => `#${rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/).slice(1).map(n => parseInt(n, 10).toString(16).padStart(2, '0')).join('')}`;
 
 // some more functions run on setup
 populateDrawBar();
