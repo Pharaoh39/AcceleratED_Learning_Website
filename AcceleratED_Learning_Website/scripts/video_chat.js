@@ -101,6 +101,9 @@ function move(e) {
         case "circle":
             circle(e);
             break;
+        case "move":
+            moveShape(e);
+            break;
         default:
             pen(e);
     }
@@ -258,6 +261,38 @@ function pen(e) {
         currentLine.points.push(lastPoint);
     } else {
         lastPoint = null;
+    }
+}
+
+// allows the user to select and move a square, will be extended to other shapes in the future
+function moveShape(e) {
+    // have to click and drag to select because the function is only called on a mouse move
+    if(e.buttons) {
+        for(var i = drawings.length - 1; i >= 0; i--) {
+            let object = drawings[i];
+            if(object.type != "rect") continue;
+
+            // check within x bounds of the rectangle
+            if(object.points[1].x > 0) {
+                if(object.points[0].x > e.offsetX || (object.points[0].x + object.points[1].x) < e.offsetX) continue;
+            } else {
+                if(object.points[0].x < e.offsetX || (object.points[0].x + object.points[1].x) > e.offsetX) continue;
+            }
+
+            // check within y bounds of the rectangle
+            if(object.points[1].y > 0) {
+                if(object.points[0].y > e.offsetY || (object.points[0].y + object.points[1].y) < e.offsetY) continue;
+            } else {
+                if(object.points[0].y < e.offsetY || (object.points[0].y + object.points[1].y) > e.offsetY) continue;
+            }
+
+            object.color = "orange";
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            redrawCanvas(drawings);
+            console.log("hit");
+
+            return;
+        }
     }
 }
 
@@ -460,6 +495,18 @@ function populateDrawBar() {
     dotDiv.addEventListener("click", lineSize, false);
     borderDiv.appendChild(dotDiv);
     document.getElementById("drawBar").appendChild(borderDiv);
+
+    // move/edit button
+    // this button functionality should be updated to the other buttons in the future
+    borderDiv = document.createElement("div");
+    borderDiv.classList.add("selectorIndicator");
+    dotDiv = document.createElement("div");
+    dotDiv.classList.add("colorDot");
+    dotDiv.style.backgroundColor = "grey";
+    dotDiv.textContent = "M";
+    dotDiv.addEventListener("click", moveObject, false);
+    borderDiv.appendChild(dotDiv);
+    document.getElementById("drawBar").appendChild(borderDiv);
 }
 
 // indicates a menu item is selected by surrounding it by a circle
@@ -503,6 +550,12 @@ function rectangleDraw(e) {
 
 function circleDraw(e) {
     canvasFunction = "circle";
+    canvas.style.cursor = "default";
+    menuItemActive(e);
+}
+
+function moveObject(e) {
+    canvasFunction = "move";
     canvas.style.cursor = "default";
     menuItemActive(e);
 }
