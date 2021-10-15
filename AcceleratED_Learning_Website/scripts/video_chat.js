@@ -224,7 +224,7 @@ function textBox(e) {
     textBox.style.top = (500) + 'px';
     textBox.style.outline = 'none';
 
-    textBox.addEventListener('textBox', resizeBox); //Change dimensions of text box depending on text
+    textBox.addEventListener('input', resizeBox); //Change dimensions of text box depending on text
 
     //Start dragging sequence
     textBox.addEventListener('mousedown', function(e) {
