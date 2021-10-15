@@ -265,32 +265,149 @@ function pen(e) {
 }
 
 // allows the user to select and move a square, will be extended to other shapes in the future
+var selectedObject = null;
 function moveShape(e) {
+
+    let sideSelectBound = 3;
+    let cornerSelectBound = 6;
     // have to click and drag to select because the function is only called on a mouse move
+    if(selectedObject) {
+        
+        // does not work for all orientations of the rectangle
+        // maybe convert rectangle points to a normal rectangle in the beginning before performing any operations to correct this
+        // do this when drawing the rectangle
+
+        //bottom-left corner
+        if(Math.ceil(Math.sqrt(Math.pow(e.offsetX-selectedObject.points[0].x, 2) + Math.pow(e.offsetY-selectedObject.points[0].y, 2))) < cornerSelectBound) {
+            canvas.style.cursor = "nesw-resize";
+            if(e.buttons) {
+                selectedObject.points[1].x = selectedObject.points[1].x + selectedObject.points[0].x-e.offsetX;
+                selectedObject.points[1].y = selectedObject.points[1].y + selectedObject.points[0].y-e.offsetY;
+                selectedObject.points[0].x = e.offsetX;
+                selectedObject.points[0].y = e.offsetY;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                redrawCanvas(drawings);
+            }
+        } else
+        // bottom-right corner
+        if(Math.ceil(Math.sqrt(Math.pow(e.offsetX-(selectedObject.points[0].x+selectedObject.points[1].x), 2) + Math.pow(e.offsetY-selectedObject.points[0].y, 2))) < cornerSelectBound) {
+            canvas.style.cursor = "nwse-resize";
+            if(e.buttons) {
+                selectedObject.points[1].x = e.offsetX - selectedObject.points[0].x;
+                selectedObject.points[1].y = selectedObject.points[1].y + selectedObject.points[0].y-e.offsetY;
+                selectedObject.points[0].y = e.offsetY;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                redrawCanvas(drawings);
+            }
+        } else 
+        // top-right corner
+        if(Math.ceil(Math.sqrt(Math.pow(e.offsetX-(selectedObject.points[0].x+selectedObject.points[1].x), 2) + Math.pow(e.offsetY-(selectedObject.points[0].y+selectedObject.points[1].y), 2))) < cornerSelectBound) {
+            canvas.style.cursor = "nesw-resize";
+            if(e.buttons) {
+                selectedObject.points[1].x = e.offsetX - selectedObject.points[0].x;
+                selectedObject.points[1].y = e.offsetY - selectedObject.points[0].y;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                redrawCanvas(drawings);
+            }
+        } else
+        // top-left corner
+        if(Math.ceil(Math.sqrt(Math.pow(e.offsetX-selectedObject.points[0].x, 2) + Math.pow(e.offsetY-(selectedObject.points[0].y+selectedObject.points[1].y), 2))) < cornerSelectBound) {
+            canvas.style.cursor = "nwse-resize";
+            if(e.buttons) {
+                selectedObject.points[1].y = e.offsetY - selectedObject.points[0].y;
+                selectedObject.points[1].x = selectedObject.points[1].x + selectedObject.points[0].x-e.offsetX;
+                selectedObject.points[0].x = e.offsetX;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                redrawCanvas(drawings);
+            }
+        } else
+        // right side
+        if(Math.abs((selectedObject.points[0].x + selectedObject.points[1].x) - e.offsetX) < sideSelectBound) {
+            canvas.style.cursor = "ew-resize";
+            if(e.buttons) {
+                selectedObject.points[1].x = e.offsetX - selectedObject.points[0].x;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                redrawCanvas(drawings);
+            }
+        } else 
+        // left side
+        if(Math.abs(selectedObject.points[0].x - e.offsetX) < sideSelectBound) {
+            canvas.style.cursor = "ew-resize";
+            if(e.buttons) {
+                selectedObject.points[1].x = selectedObject.points[1].x + selectedObject.points[0].x-e.offsetX;
+                selectedObject.points[0].x = e.offsetX;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                redrawCanvas(drawings);
+            }
+        } else 
+        // top side
+        if(Math.abs((selectedObject.points[0].y + selectedObject.points[1].y) - e.offsetY) < sideSelectBound) {
+            canvas.style.cursor = "ns-resize"; 
+            if(e.buttons) {
+                selectedObject.points[1].y = e.offsetY - selectedObject.points[0].y;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                redrawCanvas(drawings);
+            }
+        } else
+        // bottom side
+        if(Math.abs(selectedObject.points[0].y - e.offsetY) < sideSelectBound) {
+            canvas.style.cursor = "ns-resize"; 
+            if(e.buttons) {
+                selectedObject.points[1].y = selectedObject.points[1].y + selectedObject.points[0].y-e.offsetY;
+                selectedObject.points[0].y = e.offsetY;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                redrawCanvas(drawings);
+            }
+        }/* else {
+            canvas.style.cursor = "default";
+        }*/
+
+        /*if(e.buttons) {
+            // drag entire box around
+            if(selectedObject.points[1].x > 0) {
+                if(selectedObject.points[0].x > e.offsetX || (selectedObject.points[0].x + selectedObject.points[1].x) < e.offsetX) return;
+            } else {
+                if(selectedObject.points[0].x < e.offsetX || (selectedObject.points[0].x + selectedObject.points[1].x) > e.offsetX) return;
+            }
+            // check within y bounds of the rectangle
+            if(selectedObject.points[1].y > 0) {
+                if(selectedObject.points[0].y > e.offsetY || (selectedObject.points[0].y + selectedObject.points[1].y) < e.offsetY) return;
+            } else {
+                if(selectedObject.points[0].y < e.offsetY || (selectedObject.points[0].y + selectedObject.points[1].y) > e.offsetY) return;
+            }
+            //canvas.style.cursor = "grabbing";
+            selectedObject.points[0].x = e.offsetX - selectedObject.points[1].x/2;
+            selectedObject.points[0].y = e.offsetY - selectedObject.points[1].y/2;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            redrawCanvas(drawings);
+        }*/
+        
+
+        return;
+    }
+    
+    // select the rectangle the mouse is on
     if(e.buttons) {
         for(var i = drawings.length - 1; i >= 0; i--) {
             let object = drawings[i];
             if(object.type != "rect") continue;
-
             // check within x bounds of the rectangle
             if(object.points[1].x > 0) {
                 if(object.points[0].x > e.offsetX || (object.points[0].x + object.points[1].x) < e.offsetX) continue;
             } else {
                 if(object.points[0].x < e.offsetX || (object.points[0].x + object.points[1].x) > e.offsetX) continue;
             }
-
             // check within y bounds of the rectangle
             if(object.points[1].y > 0) {
                 if(object.points[0].y > e.offsetY || (object.points[0].y + object.points[1].y) < e.offsetY) continue;
             } else {
                 if(object.points[0].y < e.offsetY || (object.points[0].y + object.points[1].y) > e.offsetY) continue;
             }
-
+            // selected object may still be active after undo operation!
+            selectedObject = drawings[i];
             object.color = "orange";
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             redrawCanvas(drawings);
-            console.log("hit");
-
             return;
         }
     }
