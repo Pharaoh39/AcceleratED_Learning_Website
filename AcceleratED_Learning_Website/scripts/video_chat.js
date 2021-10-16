@@ -102,7 +102,7 @@ function move(e) {
             circle(e);
             break;
         case "move":
-            moveShape(e);
+            moveShape2(e);
             break;
         default:
             pen(e);
@@ -264,8 +264,157 @@ function pen(e) {
     }
 }
 
+
+
+
+// Returns with object the user clicks on if they clicked on an object
+function hasClickedRect(e) {
+    if(e.buttons) {
+        for(var i = drawings.length - 1; i >= 0; i--) {
+            let object = drawings[i];
+            if(object.type != "rect") continue;
+            // check within x bounds of the rectangle
+            if(object.points[1].x > 0) {
+                if(object.points[0].x > e.offsetX || (object.points[0].x + object.points[1].x) < e.offsetX) continue;
+            } else {
+                if(object.points[0].x < e.offsetX || (object.points[0].x + object.points[1].x) > e.offsetX) continue;
+            }
+            // check within y bounds of the rectangle
+            if(object.points[1].y > 0) {
+                if(object.points[0].y > e.offsetY || (object.points[0].y + object.points[1].y) < e.offsetY) continue;
+            } else {
+                if(object.points[0].y < e.offsetY || (object.points[0].y + object.points[1].y) > e.offsetY) continue;
+            }
+            // TODO: selected object may still be active after undo operation!
+            // Do I need to redraw here, I don't think so!!!!
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            redrawCanvas(drawings);
+            return drawings[i];
+        }
+    }
+    return null;
+}
+
+
+// Draws the resize icons on the corners of the rectangle
+function drawEditSelectors(selectedObject) {
+    // TODO: incorporate border radius to make everything look nice
+
+    let selectorRadius = 5;
+    let borderRadius = selectedObject.lineWidth;
+    let editPoints = [
+        {x: selectedObject.points[0].x, y: selectedObject.points[0].y},
+        {x: selectedObject.points[0].x+selectedObject.points[1].x, y: selectedObject.points[0].y},
+        {x: selectedObject.points[0].x+selectedObject.points[1].x/2, y: selectedObject.points[0].y},
+        {x: selectedObject.points[0].x, y: selectedObject.points[0].y+selectedObject.points[1].y},
+        {x: selectedObject.points[0].x+selectedObject.points[1].x, y: selectedObject.points[0].y+selectedObject.points[1].y},
+        {x: selectedObject.points[0].x+selectedObject.points[1].x/2, y: selectedObject.points[0].y+selectedObject.points[1].y},
+        {x: selectedObject.points[0].x, y: selectedObject.points[0].y+selectedObject.points[1].y/2},
+        {x: selectedObject.points[0].x+selectedObject.points[1].x, y: selectedObject.points[0].y+selectedObject.points[1].y/2},
+    ];
+
+    ctx.strokeStyle = "black";
+    ctx.fillStyle = "grey";
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+    ctx.rect(selectedObject.points[0].x, selectedObject.points[0].y, selectedObject.points[1].x, selectedObject.points[1].y);
+    ctx.stroke();
+
+    for(let node of editPoints) {
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, selectorRadius, 0, 2*Math.PI);
+        ctx.fill();
+        ctx.stroke();
+    }
+}
+
+
+// Changes the icon depending on where on the rectangle the user hovers
+function changeIcon(e, selectedObject) {
+    // TODO: 
+    //  - make editPoints global or pass it in or something
+    //  - select bound should not be static but depend on the radius of the control points
+
+    let selectBound = 8;
+    let editPoints = [
+        {cursor: "nwse-resize", x: selectedObject.points[0].x, y: selectedObject.points[0].y},
+        {cursor: "nesw-resize", x: selectedObject.points[0].x+selectedObject.points[1].x, y: selectedObject.points[0].y},
+        {cursor: "ns-resize", x: selectedObject.points[0].x+selectedObject.points[1].x/2, y: selectedObject.points[0].y},
+        {cursor: "nesw-resize", x: selectedObject.points[0].x, y: selectedObject.points[0].y+selectedObject.points[1].y},
+        {cursor: "nwse-resize", x: selectedObject.points[0].x+selectedObject.points[1].x, y: selectedObject.points[0].y+selectedObject.points[1].y},
+        {cursor: "ns-resize", x: selectedObject.points[0].x+selectedObject.points[1].x/2, y: selectedObject.points[0].y+selectedObject.points[1].y},
+        {cursor: "ew-resize", x: selectedObject.points[0].x, y: selectedObject.points[0].y+selectedObject.points[1].y/2},
+        {cursor: "ew-resize", x: selectedObject.points[0].x+selectedObject.points[1].x, y: selectedObject.points[0].y+selectedObject.points[1].y/2},
+    ];
+
+    for(let node of editPoints) {
+        let distanceFromNode = Math.ceil(Math.sqrt(Math.pow(e.offsetX-node.x, 2) + Math.pow(e.offsetY-node.y, 2)));
+        if(distanceFromNode <= selectBound) {
+            canvas.style.cursor = node.cursor;
+            return;
+        }
+    }
+
+    if(selectedObject.points[0].x <= e.offsetX && selectedObject.points[0].x+selectedObject.points[1].x >= e.offsetX && selectedObject.points[0].y <= e.offsetY && selectedObject.points[0].y+selectedObject.points[1].y >= e.offsetY) {
+        canvas.style.cursor = "all-scroll";
+        moveShapeToCursor(e, selectedObject);
+        return;
+    }
+    if(inMotion) {
+        canvas.style.cursor = "all-scroll";
+        moveShapeToCursor(e, selectedObject);
+        return;
+    }
+
+    canvas.style.cursor = "default";
+}
+
+
+// Moves the selected shape to the cursor
+var cursorOffsetFromOrigin = null;
+var inMotion = false;
+function moveShapeToCursor(e, selectedObject) {
+    // TODO:
+    //   - maybe can use last point as global variable
+
+    if(e.buttons) {
+        if(cursorOffsetFromOrigin == null) {
+            cursorOffsetFromOrigin = {x: e.offsetX-selectedObject.points[0].x, y: e.offsetY-selectedObject.points[0].y};
+            inMotion = true;
+            return;
+        }
+        selectedObject.points[0].x = e.offsetX - cursorOffsetFromOrigin.x;
+        selectedObject.points[0].y = e.offsetY - cursorOffsetFromOrigin.y;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        redrawCanvas(drawings);
+        drawEditSelectors(selectedObject);
+    } else {
+        cursorOffsetFromOrigin = null;
+        inMotion = false;
+    }
+}
+
+
+var selectObject = null;
+function moveShape2(e) {
+    // TODO:
+    //  - newselect functionality is incorrect
+    
+    var newSelect = true;
+
+    if(selectObject == null) selectObject = hasClickedRect(e);
+    if(selectObject != null) {
+        if(newSelect) {
+            drawEditSelectors(selectObject);
+            newSelect = false;
+        }
+        changeIcon(e, selectObject);
+    }
+}
+
 // allows the user to select and move a square, will be extended to other shapes in the future
-var selectedObject = null;
+//var selectedObject = null;
 function moveShape(e) {
 
     let sideSelectBound = 3;
@@ -358,29 +507,32 @@ function moveShape(e) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 redrawCanvas(drawings);
             }
-        }/* else {
-            canvas.style.cursor = "default";
-        }*/
-
-        /*if(e.buttons) {
+        } else {
+            
             // drag entire box around
             if(selectedObject.points[1].x > 0) {
-                if(selectedObject.points[0].x > e.offsetX || (selectedObject.points[0].x + selectedObject.points[1].x) < e.offsetX) return;
+                if(selectedObject.points[0].x > e.offsetX || (selectedObject.points[0].x + selectedObject.points[1].x) < e.offsetX) {canvas.style.cursor = "default"; return;}
             } else {
-                if(selectedObject.points[0].x < e.offsetX || (selectedObject.points[0].x + selectedObject.points[1].x) > e.offsetX) return;
+                if(selectedObject.points[0].x < e.offsetX || (selectedObject.points[0].x + selectedObject.points[1].x) > e.offsetX) {canvas.style.cursor = "default"; return;}
             }
             // check within y bounds of the rectangle
             if(selectedObject.points[1].y > 0) {
-                if(selectedObject.points[0].y > e.offsetY || (selectedObject.points[0].y + selectedObject.points[1].y) < e.offsetY) return;
+                if(selectedObject.points[0].y > e.offsetY || (selectedObject.points[0].y + selectedObject.points[1].y) < e.offsetY) {canvas.style.cursor = "default"; return;}
             } else {
-                if(selectedObject.points[0].y < e.offsetY || (selectedObject.points[0].y + selectedObject.points[1].y) > e.offsetY) return;
+                if(selectedObject.points[0].y < e.offsetY || (selectedObject.points[0].y + selectedObject.points[1].y) > e.offsetY) {canvas.style.cursor = "default"; return;}
             }
-            //canvas.style.cursor = "grabbing";
-            selectedObject.points[0].x = e.offsetX - selectedObject.points[1].x/2;
-            selectedObject.points[0].y = e.offsetY - selectedObject.points[1].y/2;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            redrawCanvas(drawings);
-        }*/
+            
+            if(e.buttons) {
+                canvas.style.cursor = "all-scroll";
+                selectedObject.points[0].x = e.offsetX - selectedObject.points[1].x/2;
+                selectedObject.points[0].y = e.offsetY - selectedObject.points[1].y/2;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                redrawCanvas(drawings);
+            }
+            return; 
+        }
+
+        
         
 
         return;
