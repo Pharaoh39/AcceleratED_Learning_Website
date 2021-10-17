@@ -44,16 +44,18 @@ var canvas = document.getElementById("canvas");
 let ctx = canvas.getContext("2d");
 
 var lastPoint;
+var textLastPoint;
 var canvasFunction;
 
 var pages = [];
-var currentPage = 0;
+var currentPage = 1;
 var drawings = [];
 var textBoxes = [];
 var currentLine = {
     color: activeColor,
     points: []
 }
+var imageData;
 changeCanvasFunction("pen");
 
 // resize the canvas based on the window size and center the whiteboard menu vertically in the canvas
@@ -98,10 +100,7 @@ function move(e) {
 }
 
 function line(e) {
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    redrawCanvas(drawings);
-    fillTextBoxes(textBoxes);
+    ctx.putImageData(imageData, 0, 0);
 
     if(e.buttons) {
         if(!lastPoint) {
@@ -122,6 +121,10 @@ function line(e) {
             currentLine.points.push({x: e.offsetX, y: e.offsetY});
             drawings.push(currentLine);
         }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        redrawCanvas(drawings);
+        fillTextBoxes(textBoxes);
+        imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
         lastPoint = null;
     }
 
@@ -130,9 +133,8 @@ function line(e) {
 //creates a pointer by drawing a red dot at the mouse postion, erasing everything, redrawing all the elements, and repeating
 var secondLastPoint = null;
 function pointer(e) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    redrawCanvas(drawings);
-    fillTextBoxes(textBoxes);
+    //use snapshot to make canvas
+    ctx.putImageData(imageData, 0, 0);
 
     var grd = ctx.createRadialGradient(e.offsetX, e.offsetY, 1, e.offsetX, e.offsetY, 10);
     grd.addColorStop(0, "red");
@@ -142,6 +144,8 @@ function pointer(e) {
     ctx.arc(e.offsetX, e.offsetY, 10, 0, 2*Math.PI);
     ctx.fillStyle = grd;
     ctx.fill();
+    //reset fillstyle
+    ctx.fillStyle = '#000000';
 
     if(!lastPoint) {
         lastPoint = {x: e.offsetX, y: e.offsetY};
@@ -213,7 +217,7 @@ function redrawCanvas(page) {
 }
 
 //Creates text boxes which can be typed into and dragged around
-function textBox(e) {
+function textBox() {
     var beingDragged = false;
     var textBox = document.createElement('textarea');
     textBox.classList.add("textBox");
@@ -229,20 +233,20 @@ function textBox(e) {
     //Start dragging sequence
     textBox.addEventListener('mousedown', function(e) {
         beingDragged = true;
-        lastPoint = {x: e.offsetX, y: e.offsetY};
+        textLastPoint = {x: e.offsetX, y: e.offsetY};
     }, true);
 
     //End dragging sequence
     document.addEventListener('mouseup', function() {
         beingDragged = false;
-        lastPoint = null;
+        textLastPoint = null;
     }, true);
 
     //Drag text box
     document.addEventListener('mousemove', function(e) {
         if (beingDragged) {
-            textBox.style.left = (e.clientX - lastPoint.x) + 'px';
-            textBox.style.top  = (e.clientY - lastPoint.y) + 'px';
+            textBox.style.left = (e.clientX - textLastPoint.x) + 'px';
+            textBox.style.top  = (e.clientY - textLastPoint.y) + 'px';
         }
     }, true);
 
@@ -258,7 +262,7 @@ function fillTextBoxes(curTextBoxes) {
     redrawCanvas(drawings);
     ctx.font="16px monospace";
     ctx.textBaseline = "top";
-    for (obj of curTextBoxes) {
+    for (let obj of curTextBoxes) {
         var lineHeight = parseInt(window.getComputedStyle(obj).getPropertyValue('line-height'));
         var borderWidth = parseInt(window.getComputedStyle(obj).getPropertyValue('border-width'));
         var lines = obj.value.split('\n');
@@ -273,17 +277,17 @@ function resizeBox() {
     this.style.height = 'auto';
     this.style.height = (this.scrollHeight) + "px";
     var lines = this.value.split('\n');
-    maxCols = Math.max(...lines.map(line => line.length));
+    var maxCols = Math.max(...lines.map(line => line.length));
     if (this.value.length > 3) {
         this.cols = maxCols;
     }
 }
 
 //show all textboxes
-function overlay(e) {
+function overlay() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     redrawCanvas(drawings);
-    for (obj of textBoxes) {
+    for (let obj of textBoxes) {
         obj.style.display = "inline-block"
     }
 }
@@ -293,43 +297,44 @@ function overlay(e) {
 /* ---------------------------------------------- */
 
 // create event listeners for the page control buttons
-document.getElementById("forward").addEventListener("click", nextPage, false);
-document.getElementById("backward").addEventListener("click", prevPage, false);
+document.getElementById("forward").addEventListener("click", goToNextPage, false);
+document.getElementById("backward").addEventListener("click", goToPrevPage, false);
 
 // loads the next page or creates a new page
 function nextPage() {
-    pages[currentPage] = {drawings: drawings, textBoxes: textBoxes};
+    pages[currentPage - 1] = {drawings: drawings, curTextBoxes: textBoxes};
     let numPages = pages.length;
-    console.log("test");
-    console.log(pages);
-    if(currentPage + 1 < numPages) {
-        drawings = pages[currentPage + 1].drawings;
-        textBoxes = pages[currentPage + 1].textBoxes;
+    if(currentPage + 1 <= numPages) {
+        drawings = pages[currentPage].drawings;
+        textBoxes = pages[currentPage].curTextBoxes;
         redrawCanvas(drawings);
         fillTextBoxes(textBoxes);
     } else {
-        clearCanvas();
+        //Manually clear canvas for now instead of clearCanvas() since that function removes textboxes from document
+        drawings = [];
+        textBoxes = [];
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        numPages += 1;
     }
     currentPage += 1;
-    document.getElementById("pageCount").textContent = (currentPage+1) + "/" + numPages;
-    console.log("test2");
+    document.getElementById("pageCount").textContent = (currentPage) + "/" + numPages;
 }
  
 // loads the previous page if possible
 function prevPage() {
-    pages[currentPage] = {drawings: drawings, textBoxes: textBoxes};
+    pages[currentPage - 1] = {drawings: drawings, curTextBoxes: textBoxes};
     let numPages = pages.length;
-    if(currentPage - 1 >= 0) {
-        drawings = pages[currentPage - 1].drawings;
-        textBoxes = pages[currentPage - 1].textBoxes;
+    if(currentPage - 1 > 0) {
+        drawings = pages[currentPage - 2].drawings;
+        textBoxes = pages[currentPage - 2].curTextBoxes;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
         fillTextBoxes(textBoxes);
+        currentPage -= 1;
     } else {
         return;
     }
-    currentPage -= 1;
-    document.getElementById("pageCount").textContent = (currentPage+1) + "/" + numPages;
+    document.getElementById("pageCount").textContent = (currentPage) + "/" + numPages;
 }
 
 
@@ -409,7 +414,7 @@ function populateDrawBar() {
     dotDiv = document.createElement("div");
     dotDiv.classList.add("colorDot");
     dotDiv.style.backgroundColor = "grey";
-    dotDiv.textContent = "U";
+    dotDiv.textContent = "O";
     dotDiv.addEventListener("click", showOverlay, false);
     borderDiv.appendChild(dotDiv);
     document.getElementById("drawBar").appendChild(borderDiv);
@@ -424,11 +429,11 @@ function menuItemActive(e) {
 
 //Check if need to draw textBoxes onto canvas
 function changeCanvasFunction(newFunc) {
-    if((canvasFunction == 'overlay' || canvasFunction == 'textBox') && (newFunc != 'overlay' || newFunc == 'textBox')){
+    if((canvasFunction == 'overlay' || canvasFunction == 'textBox') && newFunc != 'overlay'){
         fillTextBoxes(textBoxes);
         for (const obj of textBoxes) {
             //Hide text boxes
-            obj.style.display = "none"
+            obj.style.display = "none";
         }
     }
     canvasFunction = newFunc;
@@ -445,11 +450,15 @@ function changeDrawColor(e) {
 
 function pointerMenu(e) {
     changeCanvasFunction("pointer");
+    //take snapshot of current canvas
+    imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
     menuItemActive(e);
     canvas.style.cursor = "none";
 }
 
 function lineDraw(e) {
+    //take snapshot of current canvas
+    imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
     changeCanvasFunction("line");
     canvas.style.cursor = "default";
     menuItemActive(e);
@@ -467,6 +476,17 @@ function showOverlay(e) {
     canvas.style.cursor = "default";
     menuItemActive(e);
     overlay();
+}
+
+//Using changeCanvasFunction in case of unfilled textbox
+function goToNextPage() {
+    changeCanvasFunction("nextPage");
+    nextPage();
+}
+
+function goToPrevPage() {
+    changeCanvasFunction("prevPage");
+    prevPage();
 }
 
 
