@@ -172,6 +172,7 @@ function rectangle(e) {
 
 }
 
+
 function circle(e) {
 
     if(e.buttons) {
@@ -182,8 +183,10 @@ function circle(e) {
             return;
         }
         ctx.beginPath();
-        let radius = Math.floor(Math.sqrt(Math.pow(e.offsetX-lastPoint.x, 2) + Math.pow(e.offsetY-lastPoint.y, 2)));
-        ctx.arc(lastPoint.x, lastPoint.y, radius, 0, 2*Math.PI);
+        let radiusX = Math.abs(lastPoint.x - e.offsetX);
+        let radiusY = Math.abs(lastPoint.y - e.offsetY);
+        ctx.ellipse(lastPoint.x, lastPoint.y, radiusX, radiusY, 0, 0, 2*Math.PI);
+        console.log("draw circle");
         ctx.strokeStyle = activeColor;
         ctx.fillStyle = activeSecondaryColor;
         ctx.lineWidth = penSize;
@@ -191,9 +194,11 @@ function circle(e) {
         ctx.stroke();
     } else {
         if(lastPoint != null) {
+            let radiusX = Math.abs(lastPoint.x - e.offsetX);
+            let radiusY = Math.abs(lastPoint.y - e.offsetY);
             currentLine = {type: "circle", color: activeColor, lineWidth: penSize, points: []};
             currentLine.points.push(lastPoint);
-            currentLine.points.push({x: e.offsetX-lastPoint.x, y: e.offsetY-lastPoint.y});
+            currentLine.points.push({x: radiusX, y: radiusY});
             drawings.push(currentLine);
         }
         lastPoint = null;
@@ -274,6 +279,9 @@ function pen(e) {
 // TODO: 
 //  - selected object may still be active after undo operation!
 function hasClickedRect(e) {
+
+    return hasClickedShape(e);
+
     if(e.buttons) {
         for(var i = drawings.length - 1; i >= 0; i--) {
             let object = drawings[i];
@@ -320,9 +328,9 @@ function hasClickedShape(e) {
                 return object;
             } else
             if(object.type == "circle") {
-                let radius = Math.sqrt(Math.pow(object.points[1].x, 2) + Math.pow(object.points[1].y, 2));
-                let cursorDistanceFromCenter = Math.ceil(Math.sqrt(Math.pow(e.offsetX-object.points[0].x, 2) + Math.pow(e.offsetY-object.points[0].y, 2)));
-                if(cursorDistanceFromCenter <= radius) {
+                let mult = Math.pow(object.points[1].x, 2)*Math.pow(object.points[1].y, 2);
+                let ellipseCalculation = Math.pow(object.points[1].y, 2)*Math.pow(e.offsetX - object.points[0].x, 2) + Math.pow(object.points[1].x, 2)*Math.pow(e.offsetY - object.points[0].y, 2);
+                if(ellipseCalculation <= mult) {
                     return object;
                 }
             } else
@@ -334,21 +342,32 @@ function hasClickedShape(e) {
 }
 
 
-// Draws the resize icons on the corners of the rectangle
+// Draws the resize points on the corners of the rectangle
+// TODO: 
+//  - incorporate border radius to make everything look nice
 function drawEditSelectors(selectedObject) {
-    // TODO: incorporate border radius to make everything look nice
+    
+    let origin, offset;
+
+    if(selectedObject.type == "circle") {
+        origin = {x: selectedObject.points[0].x-selectedObject.points[1].x, y: selectedObject.points[0].y-selectedObject.points[1].y};
+        offset = {x: selectedObject.points[1].x*2, y: selectedObject.points[1].y*2};
+    } else if(selectedObject.type == "rect") {
+        origin = {x: selectedObject.points[0].x, y: selectedObject.points[0].y};
+        offset = {x: selectedObject.points[1].x, y: selectedObject.points[1].y};
+    }
 
     let selectorRadius = 5;
     let borderRadius = selectedObject.lineWidth;
     let editPoints = [
-        {x: selectedObject.points[0].x, y: selectedObject.points[0].y},
-        {x: selectedObject.points[0].x+selectedObject.points[1].x, y: selectedObject.points[0].y},
-        {x: selectedObject.points[0].x+selectedObject.points[1].x/2, y: selectedObject.points[0].y},
-        {x: selectedObject.points[0].x, y: selectedObject.points[0].y+selectedObject.points[1].y},
-        {x: selectedObject.points[0].x+selectedObject.points[1].x, y: selectedObject.points[0].y+selectedObject.points[1].y},
-        {x: selectedObject.points[0].x+selectedObject.points[1].x/2, y: selectedObject.points[0].y+selectedObject.points[1].y},
-        {x: selectedObject.points[0].x, y: selectedObject.points[0].y+selectedObject.points[1].y/2},
-        {x: selectedObject.points[0].x+selectedObject.points[1].x, y: selectedObject.points[0].y+selectedObject.points[1].y/2},
+        {x: origin.x, y: origin.y},
+        {x: origin.x+offset.x, y: origin.y},
+        {x: origin.x+offset.x/2, y: origin.y},
+        {x: origin.x, y: origin.y+offset.y},
+        {x: origin.x+offset.x, y: origin.y+offset.y},
+        {x: origin.x+offset.x/2, y: origin.y+offset.y},
+        {x: origin.x, y: origin.y+offset.y/2},
+        {x: origin.x+offset.x, y: origin.y+offset.y/2},
     ];
 
     ctx.strokeStyle = "black";
@@ -356,7 +375,7 @@ function drawEditSelectors(selectedObject) {
     ctx.lineWidth = 1;
 
     ctx.beginPath();
-    ctx.rect(selectedObject.points[0].x, selectedObject.points[0].y, selectedObject.points[1].x, selectedObject.points[1].y);
+    ctx.rect(origin.x, origin.y, offset.x, offset.y);
     ctx.stroke();
 
     for(let node of editPoints) {
@@ -368,22 +387,33 @@ function drawEditSelectors(selectedObject) {
 }
 
 
+
 // Changes the cursor icon depending on where on the rectangle the user hovers
+// TODO: 
+//  - make editPoints global or pass it in or something
+//  - select bound should not be static but depend on the radius of the control points
 function changeIcon(e, selectedObject) {
-    // TODO: 
-    //  - make editPoints global or pass it in or something
-    //  - select bound should not be static but depend on the radius of the control points
+    
+    let origin, offset;
+
+    if(selectedObject.type == "circle") {
+        origin = {x: selectedObject.points[0].x-selectedObject.points[1].x, y: selectedObject.points[0].y-selectedObject.points[1].y};
+        offset = {x: selectedObject.points[1].x*2, y: selectedObject.points[1].y*2};
+    } else if(selectedObject.type == "rect") {
+        origin = {x: selectedObject.points[0].x, y: selectedObject.points[0].y};
+        offset = {x: selectedObject.points[1].x, y: selectedObject.points[1].y};
+    }
 
     let selectBound = 8;
     let editPoints = [
-        {name: "top-left", cursor: "nwse-resize", x: selectedObject.points[0].x, y: selectedObject.points[0].y},
-        {name: "top-right", cursor: "nesw-resize", x: selectedObject.points[0].x+selectedObject.points[1].x, y: selectedObject.points[0].y},
-        {name: "top-center", cursor: "ns-resize", x: selectedObject.points[0].x+selectedObject.points[1].x/2, y: selectedObject.points[0].y},
-        {name: "btm-left", cursor: "nesw-resize", x: selectedObject.points[0].x, y: selectedObject.points[0].y+selectedObject.points[1].y},
-        {name: "btm-right", cursor: "nwse-resize", x: selectedObject.points[0].x+selectedObject.points[1].x, y: selectedObject.points[0].y+selectedObject.points[1].y},
-        {name: "btm-center", cursor: "ns-resize", x: selectedObject.points[0].x+selectedObject.points[1].x/2, y: selectedObject.points[0].y+selectedObject.points[1].y},
-        {name: "left-center", cursor: "ew-resize", x: selectedObject.points[0].x, y: selectedObject.points[0].y+selectedObject.points[1].y/2},
-        {name: "right-center", cursor: "ew-resize", x: selectedObject.points[0].x+selectedObject.points[1].x, y: selectedObject.points[0].y+selectedObject.points[1].y/2},
+        {name: "top-left", cursor: "nwse-resize", x: origin.x, y: origin.y},
+        {name: "top-right", cursor: "nesw-resize", x: origin.x+offset.x, y: origin.y},
+        {name: "top-center", cursor: "ns-resize", x: origin.x+offset.x/2, y: origin.y},
+        {name: "btm-left", cursor: "nesw-resize", x: origin.x, y: origin.y+offset.y},
+        {name: "btm-right", cursor: "nwse-resize", x: origin.x+offset.x, y: origin.y+offset.y},
+        {name: "btm-center", cursor: "ns-resize", x: origin.x+offset.x/2, y: origin.y+offset.y},
+        {name: "left-center", cursor: "ew-resize", x: origin.x, y: origin.y+offset.y/2},
+        {name: "right-center", cursor: "ew-resize", x: origin.x+offset.x, y: origin.y+offset.y/2},
     ];
 
     for(let node of editPoints) {
@@ -400,7 +430,7 @@ function changeIcon(e, selectedObject) {
         return;
     }
 
-    if(selectedObject.points[0].x <= e.offsetX && selectedObject.points[0].x+selectedObject.points[1].x >= e.offsetX && selectedObject.points[0].y <= e.offsetY && selectedObject.points[0].y+selectedObject.points[1].y >= e.offsetY) {
+    if(origin.x <= e.offsetX && origin.x+offset.x >= e.offsetX && origin.y <= e.offsetY && origin.y+offset.y >= e.offsetY) {
         canvas.style.cursor = "all-scroll";
         moveShapeToCursor(e, selectedObject);
         return;
@@ -421,6 +451,11 @@ function changeIcon(e, selectedObject) {
 var ctrlPointInUse = null;
 var inMotionResize = false;
 function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
+
+    if(selectedObject.type == "circle") {
+        resizeCircleFromPoint(e, ctrlPoint, selectedObject);
+        return;
+    }
 
     const [origin, offset] = selectedObject.points;
 
@@ -468,7 +503,37 @@ function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
     } else {
         inMotionResize = false;
     }
+}
 
+function resizeCircleFromPoint(e, ctrlPoint, selectedObject) {
+
+    const [origin, offset] = selectedObject.points;
+
+    if(e.buttons) {
+        if(!inMotionResize) inMotionResize = true;
+        switch(ctrlPoint) {
+            case "top-left":
+            case "top-right":
+            case "btm-left":
+            case "btm-right":
+                offset.x = Math.abs(origin.x - e.offsetX);
+                offset.y = Math.abs(origin.y - e.offsetY);
+                break;
+            case "top-center":
+            case "btm-center":
+                offset.y = Math.abs(origin.y - e.offsetY);
+                break;
+            case "left-center":
+            case "right-center":
+                offset.x = Math.abs(origin.x - e.offsetX);
+                break;
+        }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        redrawCanvas(drawings);
+        drawEditSelectors(selectedObject);
+    } else {
+        inMotionResize = false;
+    }
 }
 
 
@@ -567,8 +632,10 @@ function redrawRect(drawing) {
 
 function redrawCircle(drawing) {
     ctx.beginPath();
-    let radius = Math.sqrt(Math.pow(drawing.points[1].x, 2) + Math.pow(drawing.points[1].y, 2));
-    ctx.arc(drawing.points[0].x, drawing.points[0].y, radius, 0, 2*Math.PI);
+    //let radius = Math.sqrt(Math.pow(drawing.points[1].x, 2) + Math.pow(drawing.points[1].y, 2));
+    let radiusX = drawing.points[1].x;
+    let radiusY = drawing.points[1].y;
+    ctx.ellipse(drawing.points[0].x, drawing.points[0].y, radiusX, radiusY, 0, 0, 2*Math.PI);
     ctx.strokeStyle = drawing.color;
     // HACK: bad workaround
     try {
