@@ -279,12 +279,14 @@ function pen(e) {
 /* --------------------------------------------------- */
 /* ---------- Functions for Resizing Shapes ---------- */
 /* --------------------------------------------------- */
+// TODO:
+//  - behavior of these functions is not defined for fringe cases
+//  - clicking on empty canvas should result in deselection of active shape
+//  - ctrl+z of active object may cause errors
+//  - selection border should take into account line thickness of the shapes
 
 
-// Returns with object the user clicks on if they clicked on an object
-// TODO: 
-//  - selected object may still be active after undo operation!
-//  - Change offset of circle to x and y radius
+// Returns with object the user clicks on if they clicked on an object (an ellipse or )
 function hasClickedShape(e) {
     if(e.buttons) {
         for(var i = drawings.length - 1; i >= 0; i--) {
@@ -323,8 +325,6 @@ function hasClickedShape(e) {
 
 
 // Draws the resize points on the corners of the rectangle
-// TODO: 
-//  - incorporate border radius to make everything look nice
 function drawEditSelectors(selectedObject) {
     
     let origin, offset;
@@ -369,9 +369,6 @@ function drawEditSelectors(selectedObject) {
 
 
 // Changes the cursor icon depending on where on the rectangle the user hovers
-// TODO: 
-//  - make editPoints global or pass it in or something
-//  - select bound should not be static but depend on the radius of the control points
 function changeIcon(e, selectedObject) {
     
     let origin, offset;
@@ -426,8 +423,6 @@ function changeIcon(e, selectedObject) {
 
 
 // Resizes the rectangle from one of the control points
-// TODO:
-//  - use cursor offset from origin to prevent the little jump when resizing
 var ctrlPointInUse = null;
 var inMotionResize = false;
 function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
@@ -485,6 +480,7 @@ function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
     }
 }
 
+// resizes the ellipse from one of the control points
 function resizeCircleFromPoint(e, ctrlPoint, selectedObject) {
 
     const [origin, offset] = selectedObject.points;
@@ -521,8 +517,6 @@ function resizeCircleFromPoint(e, ctrlPoint, selectedObject) {
 var cursorOffsetFromOrigin = null;
 var inMotion = false;
 function moveShapeToCursor(e, selectedObject) {
-    // TODO:
-    //   - maybe can use last point as global variable
 
     if(e.buttons) {
         if(cursorOffsetFromOrigin == null) {
@@ -546,32 +540,13 @@ var selectObjectLayer = null;
 var prevObjectLayer = null;
 var selectObject = null;
 function moveShape2(e) {
-    // TODO:
-    //  - newselect functionality is incorrect
-    //  - clicking on empty canvas should result in deselection of active shape
-    
     var newSelect = true;
-
-    //if(selectObject == null) selectObject = hasClickedShape(e);
     var selectedObject = hasClickedShape(e);
-    
     if((selectObject == null || prevObjectLayer != selectObjectLayer) && !inMotion && !inMotionResize) {
         prevObjectLayer = selectObjectLayer;
         selectObject = selectedObject;
     }
-    /*if(selectedObject == null) {
-        selectObject = null;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        redrawCanvas(drawings);
-        return;
-    }*/
-    if(selectObject != null) {
-        if(newSelect) {
-            drawEditSelectors(selectObject);
-            newSelect = false;
-        }
-        changeIcon(e, selectObject);
-    }
+    changeIcon(e, selectObject);
 }
 
 
