@@ -325,6 +325,13 @@ function redrawCircle(drawing) {
     ctx.stroke();
 }
 
+/* --------------------------------------------------- */
+/* ---------- Advanced eraser functionality ---------- */
+/* --------------------------------------------------- */
+
+
+
+
 
 /* ---------------------------------------------- */
 /* ---------- Javascript for Page menu ---------- */
@@ -460,6 +467,29 @@ function populateDrawBar() {
     dotDiv.addEventListener("click", lineSize, false);
     borderDiv.appendChild(dotDiv);
     document.getElementById("drawBar").appendChild(borderDiv);
+
+    // move/edit button
+    // this button functionality should be updated to the other buttons in the future
+    borderDiv = document.createElement("div");
+    borderDiv.classList.add("selectorIndicator");
+    dotDiv = document.createElement("div");
+    dotDiv.classList.add("colorDot");
+    dotDiv.style.backgroundColor = "grey";
+    dotDiv.textContent = "M";
+    dotDiv.addEventListener("click", moveObject, false);
+    borderDiv.appendChild(dotDiv);
+    document.getElementById("drawBar").appendChild(borderDiv);
+
+    // Eraser button
+    borderDiv = document.createElement("div");
+    borderDiv.classList.add("selectorIndicator");
+    dotDiv = document.createElement("div");
+    dotDiv.classList.add("colorDot");
+    dotDiv.style.backgroundColor = "grey";
+    dotDiv.textContent = "E";
+    dotDiv.addEventListener("click", eraseObjects, false);
+    borderDiv.appendChild(dotDiv);
+    document.getElementById("drawBar").appendChild(borderDiv);
 }
 
 // indicates a menu item is selected by surrounding it by a circle
@@ -504,6 +534,18 @@ function rectangleDraw(e) {
 function circleDraw(e) {
     canvasFunction = "circle";
     canvas.style.cursor = "default";
+    menuItemActive(e);
+}
+
+function moveObject(e) {
+    canvasFunction = "move";
+    canvas.style.cursor = "default";
+    menuItemActive(e);
+}
+
+function eraseObjects(e) {
+    canvasFunction = "move";
+    canvas.style.cursor = "none";
     menuItemActive(e);
 }
 
