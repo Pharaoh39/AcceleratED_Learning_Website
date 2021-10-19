@@ -141,10 +141,7 @@ function line(e) {
 
 
 function rectangle(e) {
-
-    /*ctx.clearRect(0, 0, canvas.width, canvas.height);
-    redrawCanvas(drawings);*/
-
+    let offsetX, offsetY;
     if(e.buttons) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
@@ -152,8 +149,13 @@ function rectangle(e) {
             lastPoint = {x: e.offsetX, y: e.offsetY};
             return;
         }
+        offsetX = e.offsetX-lastPoint.x
+        offsetY = e.offsetY-lastPoint.y;
+        if(e.ctrlKey) {
+            offsetX >= offsetY ? offsetY = offsetX : offsetX = offsetY;
+        }
         ctx.beginPath();
-        ctx.rect(lastPoint.x, lastPoint.y, e.offsetX-lastPoint.x, e.offsetY-lastPoint.y);
+        ctx.rect(lastPoint.x, lastPoint.y, offsetX, offsetY);
         ctx.strokeStyle = activeColor;
         ctx.fillStyle = activeSecondaryColor;
         ctx.lineWidth = penSize;
@@ -173,8 +175,9 @@ function rectangle(e) {
 }
 
 
+// lets the user draw an ellipse
 function circle(e) {
-
+    let radiusX, radiusY;
     if(e.buttons) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
@@ -183,8 +186,11 @@ function circle(e) {
             return;
         }
         ctx.beginPath();
-        let radiusX = Math.abs(lastPoint.x - e.offsetX);
-        let radiusY = Math.abs(lastPoint.y - e.offsetY);
+        radiusX = Math.abs(lastPoint.x - e.offsetX);
+        radiusY = Math.abs(lastPoint.y - e.offsetY);
+        if(e.ctrlKey) {
+            radiusX >= radiusY ? radiusY = radiusX : radiusX = radiusY;
+        }
         ctx.ellipse(lastPoint.x, lastPoint.y, radiusX, radiusY, 0, 0, 2*Math.PI);
         console.log("draw circle");
         ctx.strokeStyle = activeColor;
@@ -278,35 +284,6 @@ function pen(e) {
 // Returns with object the user clicks on if they clicked on an object
 // TODO: 
 //  - selected object may still be active after undo operation!
-function hasClickedRect(e) {
-
-    return hasClickedShape(e);
-
-    if(e.buttons) {
-        for(var i = drawings.length - 1; i >= 0; i--) {
-            let object = drawings[i];
-            if(object.type != "rect") continue;
-            // check within x bounds of the rectangle
-            if(object.points[1].x > 0) {
-                if(object.points[0].x > e.offsetX || (object.points[0].x + object.points[1].x) < e.offsetX) continue;
-            } else {
-                if(object.points[0].x < e.offsetX || (object.points[0].x + object.points[1].x) > e.offsetX) continue;
-            }
-            // check within y bounds of the rectangle
-            if(object.points[1].y > 0) {
-                if(object.points[0].y > e.offsetY || (object.points[0].y + object.points[1].y) < e.offsetY) continue;
-            } else {
-                if(object.points[0].y < e.offsetY || (object.points[0].y + object.points[1].y) > e.offsetY) continue;
-            }
-            
-            return drawings[i];
-        }
-    }
-    return null;
-}
-
-
-// TODO:
 //  - Change offset of circle to x and y radius
 function hasClickedShape(e) {
     if(e.buttons) {
@@ -325,12 +302,14 @@ function hasClickedShape(e) {
                 } else {
                     if(object.points[0].y < e.offsetY || (object.points[0].y + object.points[1].y) > e.offsetY) continue;
                 }
+                selectObjectLayer = i;
                 return object;
             } else
             if(object.type == "circle") {
                 let mult = Math.pow(object.points[1].x, 2)*Math.pow(object.points[1].y, 2);
                 let ellipseCalculation = Math.pow(object.points[1].y, 2)*Math.pow(e.offsetX - object.points[0].x, 2) + Math.pow(object.points[1].x, 2)*Math.pow(e.offsetY - object.points[0].y, 2);
                 if(ellipseCalculation <= mult) {
+                    selectObjectLayer = i;
                     return object;
                 }
             } else
@@ -338,6 +317,7 @@ function hasClickedShape(e) {
                 continue;
             }
         }
+        //if(!inMotion && !inMotionResize) return null;
     }
 }
 
@@ -562,14 +542,29 @@ function moveShapeToCursor(e, selectedObject) {
 }
 
 
+var selectObjectLayer = null;
+var prevObjectLayer = null;
 var selectObject = null;
 function moveShape2(e) {
     // TODO:
     //  - newselect functionality is incorrect
+    //  - clicking on empty canvas should result in deselection of active shape
     
     var newSelect = true;
 
-    if(selectObject == null) selectObject = hasClickedRect(e);
+    //if(selectObject == null) selectObject = hasClickedShape(e);
+    var selectedObject = hasClickedShape(e);
+    
+    if((selectObject == null || prevObjectLayer != selectObjectLayer) && !inMotion && !inMotionResize) {
+        prevObjectLayer = selectObjectLayer;
+        selectObject = selectedObject;
+    }
+    /*if(selectedObject == null) {
+        selectObject = null;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        redrawCanvas(drawings);
+        return;
+    }*/
     if(selectObject != null) {
         if(newSelect) {
             drawEditSelectors(selectObject);
