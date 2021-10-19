@@ -31,7 +31,11 @@
             <div class="grid-item bottomItem btn" id="forward">--></div>
             <div class="grid-item bottomItem btn" id="showCamera">Show Camera</div>
         </div>
-
-        <script src="scripts/video_chat.js" async defer></script>
+        <script>
+            const ROOM_ID = "<%= roomId %>"
+        </script>
+        <script src="https://unpkg.com/peerjs@1.3.1/dist/peerjs.min.js"></script>
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="video_chat.js" async defer></script>
     </body>
 </html>
