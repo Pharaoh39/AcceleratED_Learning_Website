@@ -104,6 +104,8 @@ function move(e) {
         case "move":
             moveShape2(e);
             break;
+        case "erase":
+            erase(e);
         default:
             pen(e);
     }
@@ -266,6 +268,33 @@ function pen(e) {
         ctx.lineTo(e.offsetX, e.offsetY);
         ctx.strokeStyle = activeColor;
         ctx.lineWidth = penSize;
+        ctx.lineCap = "round";
+        ctx.stroke();
+        lastPoint = {x: e.offsetX, y: e.offsetY};
+        currentLine.points.push(lastPoint);
+    } else {
+        lastPoint = null;
+    }
+}
+
+
+// simulates an eraser by drawing with the same color as the canvas background
+function erase(e) {
+    if(e.buttons) {
+        // if newline
+        if(!lastPoint) {
+            drawings.push(currentLine);
+            currentLine = {type: "poly", color: "white", lineWidth: penSize, points: []};
+            lastPoint = {x: e.offsetX, y: e.offsetY};
+            currentLine.points.push(lastPoint);
+            return;
+        }
+        // else if continuing current line
+        ctx.beginPath();
+        ctx.moveTo(lastPoint.x, lastPoint.y);
+        ctx.lineTo(e.offsetX, e.offsetY);
+        ctx.strokeStyle = "white"/*canvas.style.backgroundColor*/;
+        ctx.lineWidth = penSize*4;
         ctx.lineCap = "round";
         ctx.stroke();
         lastPoint = {x: e.offsetX, y: e.offsetY};
@@ -765,6 +794,17 @@ function populateDrawBar() {
     dotDiv.addEventListener("click", moveObject, false);
     borderDiv.appendChild(dotDiv);
     document.getElementById("drawBar").appendChild(borderDiv);
+
+    // move/edit button
+    borderDiv = document.createElement("div");
+    borderDiv.classList.add("selectorIndicator");
+    dotDiv = document.createElement("div");
+    dotDiv.classList.add("colorDot");
+    dotDiv.style.backgroundColor = "grey";
+    dotDiv.textContent = "E";
+    dotDiv.addEventListener("click", eraseObjects, false);
+    borderDiv.appendChild(dotDiv);
+    document.getElementById("drawBar").appendChild(borderDiv);
 }
 
 // indicates a menu item is selected by surrounding it by a circle
@@ -814,6 +854,12 @@ function circleDraw(e) {
 
 function moveObject(e) {
     canvasFunction = "move";
+    canvas.style.cursor = "default";
+    menuItemActive(e);
+}
+
+function eraseObjects(e) {
+    canvasFunction = "erase";
     canvas.style.cursor = "default";
     menuItemActive(e);
 }
