@@ -242,8 +242,6 @@ function pointer(e) {
     ctx.arc(e.offsetX, e.offsetY, 10, 0, 2*Math.PI);
     ctx.fillStyle = grd;
     ctx.fill();
-    //reset fillstyle
-    ctx.fillStyle = '#000000';
 
     if(!lastPoint) {
         lastPoint = {x: e.offsetX, y: e.offsetY};
