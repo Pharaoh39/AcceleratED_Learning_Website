@@ -847,7 +847,26 @@ function lineSize(e) {
 const rgb2hex = (rgb) => `#${rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/).slice(1).map(n => parseInt(n, 10).toString(16).padStart(2, '0')).join('')}`;
 
 // some more functions run on setup
-populateDrawBar();
+//populateDrawBar();
 window.onmousemove = move;
 window.onresize = resize;
 resize();
+
+
+// newmenu
+function dropDown() {
+    let btn = document.getElementById("shapes");
+    //let height = btn.clientHeight;
+    //console.log(btn.getBoundingClientRect());
+    let info = btn.getBoundingClientRect();
+    for(let i = 1; i < 10; i++) {
+        borderDiv = document.createElement("div");
+        borderDiv.classList.add("canvasBtnAbs");
+        borderDiv.style.height = info.height + "px";
+        borderDiv.style.width = info.width + "px";
+        borderDiv.style.top = (info.top - info.height*i) + "px";
+        borderDiv.style.left = info.left + "px";
+        borderDiv.textContent = "hi";
+        document.getElementById("drawBar").appendChild(borderDiv);
+    }
+}
