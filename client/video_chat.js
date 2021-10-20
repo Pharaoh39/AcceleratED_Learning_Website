@@ -1,15 +1,17 @@
 /* -------------------------------------------------- */
-/* ---------- Javascript for Video Call ---------- */
+/* ------ Javascript for Video Call/Messaging ------- */
 /* -------------------------------------------------- */
 const socket = io.connect('/');
 var videoElement = document.querySelector("#video_element");
 const myPeer = new Peer(undefined, {
-  host: '/',
-  port: '3001'
+  host: 'canvas-peerjs-server.herokuapp.com',
+  secure: true,
+  port: '443'
 });
 const myVideo = document.createElement('video');
 //myVideo.muted = true
-const peers = {}
+const peers = {};
+var videoStreams = [];
 navigator.mediaDevices.getUserMedia({
   video: true,
   audio: true
@@ -17,6 +19,7 @@ navigator.mediaDevices.getUserMedia({
   addVideoStream(myVideo, stream);
 
   myPeer.on('call', call => {
+    console.log("Calling");
     call.answer(stream)
     const video = document.createElement('video')
     call.on('stream', userVideoStream => {
@@ -25,20 +28,29 @@ navigator.mediaDevices.getUserMedia({
   });
 
   socket.on('user-connected', userId => {
+    console.log("user Connecting");
       // user is joining`
     setTimeout(() => {
         // user joined
-        connectToNewUser(userId, stream)
-      }, 5000)
+        connectToNewUser(userId, stream);
+        console.log("user Connected");
+      }, 5000);
     });
-});
+})
+.catch(function (err0r) {
+    console.log("Problem with video");
+});;
 
 socket.on('user-disconnected', userId => {
-  if (peers[userId]) peers[userId].close()
+    videoElement.srcObject = videoStreams[0];
+    if (peers[userId]){
+        peers[userId].close();
+    }
 });
 
 myPeer.on('open', id => {
-  socket.emit('join-room', ROOM_ID, id)
+    console.log("Peerjs Connected");
+    socket.emit('join-room', ROOM_ID, id);
 });
 
 function connectToNewUser(userId, stream) {
@@ -55,33 +67,14 @@ function connectToNewUser(userId, stream) {
 }
 
 function addVideoStream(video, stream) {
+    console.log("Adding Video");
     console.log(stream);
-  videoElement.srcObject = stream
+    videoStreams.push(stream);
+    videoElement.srcObject = stream
 //   video.addEventListener('loadedmetadata', () => {
 //     video.play()
 //   });
-  //videoElement = video;
 }
-/* -------------------------------------------------- */
-/* ---------- Javascript for Video Capture ---------- */
-/* -------------------------------------------------- */
-
-// Capture webcam video and display on the screen
-// var video = document.querySelector("#video_element");
-// var constraints = {
-//     video: true,
-//     audio: false
-// }
-
-// if (navigator.mediaDevices.getUserMedia) {
-//   navigator.mediaDevices.getUserMedia(constraints)
-//     .then(function (stream) {
-//       video.srcObject = stream;
-//     })
-//     .catch(function (err0r) {
-//       console.log("Problem with video");
-//     });
-// }
 
 // document.getElementById("showCamera").addEventListener("click", showCamera, false);
 
