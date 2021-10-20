@@ -44,7 +44,8 @@ var canvas = document.getElementById("canvas");
 let ctx = canvas.getContext("2d");
 
 var lastPoint;
-var canvasFunction = "pen";
+var canvasFunction;
+changeCanvasFunction("pen");
 var penSize = 2;
 var textLastPoint;
 
@@ -59,7 +60,6 @@ var currentLine = {
     points: []
 }
 var imageData;
-changeCanvasFunction("pen");
 
 // resize the canvas based on the window size and center the whiteboard menu vertically in the canvas
 function resize() {
@@ -112,6 +112,10 @@ function move(e) {
         case "move":
             moveShape2(e);
             break;
+        case "textBox":
+            break;
+        case "overlay":
+            break;
         default:
             pen(e);
     }
@@ -155,6 +159,7 @@ function rectangle(e) {
     if(e.buttons) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
+        fillTextBoxes(textBoxes);
         if(!lastPoint) {
             lastPoint = {x: e.offsetX, y: e.offsetY};
             return;
@@ -191,6 +196,7 @@ function circle(e) {
     if(e.buttons) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
+        fillTextBoxes(textBoxes);
         if(!lastPoint) {
             lastPoint = {x: e.offsetX, y: e.offsetY};
             return;
@@ -486,6 +492,7 @@ function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
         }
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
+        fillTextBoxes(textBoxes);
         drawEditSelectors(selectedObject);
     } else {
         inMotionResize = false;
@@ -518,6 +525,7 @@ function resizeCircleFromPoint(e, ctrlPoint, selectedObject) {
         }
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
+        fillTextBoxes(textBoxes);
         drawEditSelectors(selectedObject);
     } else {
         inMotionResize = false;
@@ -540,6 +548,7 @@ function moveShapeToCursor(e, selectedObject) {
         selectedObject.points[0].y = e.offsetY - cursorOffsetFromOrigin.y;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
+        fillTextBoxes(textBoxes);
         drawEditSelectors(selectedObject);
     } else {
         cursorOffsetFromOrigin = null;
@@ -647,6 +656,7 @@ function fillTextBoxes(curTextBoxes) {
         var borderWidth = parseInt(window.getComputedStyle(obj).getPropertyValue('border-width'));
         var lines = obj.value.split('\n');
         for (var i = 0; i<lines.length; i++) {
+            ctx.fillStyle = '#000000';
             ctx.fillText(lines[i], parseInt(obj.style.left) - canvas.getBoundingClientRect().x + borderWidth, 
             parseInt(obj.style.top) - canvas.getBoundingClientRect().y + borderWidth + i*lineHeight);
         }
@@ -966,19 +976,19 @@ function goToPrevPage() {
 }
 
 function rectangleDraw(e) {
-    canvasFunction = "rect";
+    changeCanvasFunction("rect");
     canvas.style.cursor = "default";
     menuItemActive(e);
 }
 
 function circleDraw(e) {
-    canvasFunction = "circle";
+    changeCanvasFunction("circle");
     canvas.style.cursor = "default";
     menuItemActive(e);
 }
 
 function moveObject(e) {
-    canvasFunction = "move";
+    changeCanvasFunction("move");
     canvas.style.cursor = "default";
     menuItemActive(e);
 }
