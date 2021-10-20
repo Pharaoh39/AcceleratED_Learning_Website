@@ -670,8 +670,8 @@ function prevPage() {
 /* ---------------------------------------------------- */
 
 
-const drawColors = ["#4198e9", "#e94b41", "#e9b041", "#44e941", "#b341e9"];
-const secondaryColors = ["#a3c4e3", "#eba4a0", "#ebd3a4", "#a0ed9f", "#d2a0eb"];
+const drawColors = ["#4198e9", "#e94b41", "#e9b041", "#44e941", "#b341e9", "#000000"];
+const secondaryColors = ["#a3c4e3", "#eba4a0", "#ebd3a4", "#a0ed9f", "#d2a0eb", "#e6e6e6"];
 
 var activeColor = "#4198e9";
 var activeSecondaryColor = "#a3c4e3";
@@ -774,13 +774,6 @@ function populateDrawBar() {
     document.getElementById("drawBar").appendChild(borderDiv);
 }
 
-// indicates a menu item is selected by surrounding it by a circle
-function menuItemActive(e) {
-    activeDot.classList.remove("selectorActive");
-    activeDot = e.currentTarget.parentNode;
-    activeDot.classList.add("selectorActive");
-}
-
 // changes the pen color when drawing
 function changeDrawColor(e) {
     canvasFunction = "pen";
@@ -793,36 +786,6 @@ function changeDrawColor(e) {
     squareOption.style.backgroundColor = activeSecondaryColor;
     circleOption.style.borderColor = activeColor;
     circleOption.style.backgroundColor = activeSecondaryColor;
-}
-
-function pointerMenu(e) {
-    canvasFunction = "pointer";
-    menuItemActive(e);
-    canvas.style.cursor = "none";
-}
-
-function lineDraw(e) {
-    canvasFunction = "line";
-    canvas.style.cursor = "default";
-    menuItemActive(e);
-}
-
-function rectangleDraw(e) {
-    canvasFunction = "rect";
-    canvas.style.cursor = "default";
-    menuItemActive(e);
-}
-
-function circleDraw(e) {
-    canvasFunction = "circle";
-    canvas.style.cursor = "default";
-    menuItemActive(e);
-}
-
-function moveObject(e) {
-    canvasFunction = "move";
-    canvas.style.cursor = "default";
-    menuItemActive(e);
 }
 
 function lineSize(e) {
@@ -870,3 +833,172 @@ function dropDown() {
         document.getElementById("drawBar").appendChild(borderDiv);
     }
 }
+
+function poopulateDrawBar2() {
+
+    let buttons = [
+        "gg-pen",
+        "gg-shape-square",
+        "colorRect",
+        "pointer",
+        /*"colorDot",*/
+        "gg-arrow-left",
+        "pageNumber",
+        "gg-arrow-right",
+        "text",
+        "text",
+        "gg-controller",
+        "gg-erase",
+        "gg-trash"
+    ];
+    let menuBtn, btnContents;
+
+    for(let buttonType of buttons) {
+
+        if(buttonType == "pageNumber") {
+            menuBtn = document.createElement("div");
+            menuBtn.classList.add("center");
+            menuBtn.textContent = "0/0";
+            document.getElementById("drawBar").appendChild(menuBtn);
+            continue;
+        } else 
+        if(buttonType == "text") {
+            menuBtn = document.createElement("div");
+            menuBtn.classList.add("canvasBtn");
+            btnContents = document.createElement("i");
+            btnContents.classList.add("center");
+            btnContents.textContent = "Tt";
+            menuBtn.appendChild(btnContents);
+            document.getElementById("drawBar").appendChild(menuBtn);
+            continue;
+        } else {
+            activeDot = menuBtn;
+            menuBtn = document.createElement("div");
+            menuBtn.classList.add("canvasBtn");
+            btnContents = document.createElement("i");
+            btnContents.classList.add(buttonType, "center");
+            menuBtn.appendChild(btnContents);
+            document.getElementById("drawBar").appendChild(menuBtn);
+
+            switch(buttonType) {
+                case "gg-pen":
+                    break;
+                case "gg-shape-square":
+                    menuBtn.addEventListener("click", rectangleDraw, false);
+                    break;
+                case "colorRect":
+                    activeColorDiv = menuBtn;
+                    menuBtn.addEventListener("click", colorsDropDown, false);
+                    break;
+                case "pointer":
+                    menuBtn.addEventListener("click", pointerMenu, false);
+                    break;
+                case "gg-arrow-left":
+                    menuBtn.addEventListener("click", prevPage, false);
+                    break;
+                case "gg-arrow-right":
+                    menuBtn.addEventListener("click", nextPage, false);
+                    break;
+                case "gg-controller":
+                    menuBtn.addEventListener("click", moveObject, false);
+                    break;
+                case "gg-trash":
+                    menuBtn.addEventListener("click", clearCanvas, false);
+                    break;
+                case "text":
+                    menuBtn.addEventListener("click", notYetWorking, false);
+                    break;
+            }
+            
+        }
+    }
+}
+
+function menuItemActive(e) {
+    activeDot.classList.remove("canvasBtnActive");
+    activeDot = e.currentTarget;
+    activeDot.classList.add("canvasBtnActive");
+}
+
+function pointerMenu(e) {
+    canvasFunction = "pointer";
+    canvas.style.cursor = "none";
+    menuItemActive(e);
+}
+
+function lineDraw(e) {
+    canvasFunction = "line";
+    canvas.style.cursor = "default";
+    menuItemActive(e);
+}
+
+function rectangleDraw(e) {
+    canvasFunction = "rect";
+    canvas.style.cursor = "default";
+    menuItemActive(e);
+}
+
+function circleDraw(e) {
+    canvasFunction = "circle";
+    canvas.style.cursor = "default";
+    menuItemActive(e);
+}
+
+function moveObject(e) {
+    canvasFunction = "move";
+    canvas.style.cursor = "default";
+    menuItemActive(e);
+}
+
+function notYetWorking() {
+    alert("This feature has not yet been implimented");
+}
+
+// newmenu
+let menuList = [];
+let activeColorDiv = null;
+function colorsDropDown(e) {
+    let menuBtn, colorChoice;
+    let btn = e.currentTarget;
+    let counter = 0;
+    if(menuList.length == 0) {
+        let info = btn.getBoundingClientRect();
+        for(let i = 1; i <= drawColors.length; i++) {
+            if(drawColors[i-1] != activeColor) {
+                menuBtn = document.createElement("div");
+                menuBtn.id = drawColors[i-1];
+                menuBtn.classList.add("canvasBtnAbs");
+                menuBtn.style.height = info.height + "px";
+                menuBtn.style.width = info.width + "px";
+                menuBtn.style.top = (info.top - info.height*counter + 16) + "px";
+                menuBtn.style.left = info.left + "px";
+                colorChoice = document.createElement("i");
+                colorChoice.classList.add("colorRect", "center");
+                colorChoice.style.backgroundColor = drawColors[i-1];
+                menuBtn.appendChild(colorChoice);
+                menuList.push(menuBtn);
+                document.getElementById("drawBar").appendChild(menuBtn);
+                menuBtn.addEventListener("click", changeColor, false);
+                counter++;
+            }
+        }
+    } else {
+        for(let element of menuList) {
+            element.remove();
+        }
+        menuList = [];
+    }
+}
+
+function changeColor(e) {
+    let color = e.currentTarget.id;
+    activeColor = color;
+    activeSecondaryColor = secondaryColors[drawColors.indexOf(activeColor)];
+    for(let element of menuList) {
+        element.remove();
+    }
+    menuList = [];
+    activeColorDiv.children[0].style.backgroundColor = activeColor;
+}
+
+poopulateDrawBar2();

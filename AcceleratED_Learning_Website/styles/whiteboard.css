@@ -202,9 +202,18 @@ video {
     grid-template-columns: auto;
     grid-template-rows: auto;
     cursor: default;
+    cursor: pointer;
 }
 .canvasBtn:hover {
+    background-color: #e0e9f1;
+}
+.canvasBtn:active {
     background-color: #ACC9E4;
+    box-shadow: inset 0px 3px 5px gray;
+}
+.canvasBtnActive {
+    background-color: #ACC9E4;
+    box-shadow: inset 0px 3px 5px gray;
 }
 
 .canvasBtnAbs {
@@ -216,7 +225,16 @@ video {
     cursor: default;
     border: 1px solid gray;
     background-color: white;
+    cursor: pointer;
 }
 .canvasBtnAbs:hover {
-    background-color: #ACC9E4;
+    background-color: #e0e9f1;
 }
+
+.colorRect {
+    place-self: stretch;
+    margin: 8px;
+    background-color: #4198e9;
+    border-radius: 3px;
+}
+
