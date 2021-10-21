@@ -242,8 +242,6 @@ function pointer(e) {
     ctx.arc(e.offsetX, e.offsetY, 10, 0, 2*Math.PI);
     ctx.fillStyle = grd;
     ctx.fill();
-    //reset fillstyle
-    ctx.fillStyle = '#000000';
 
     if(!lastPoint) {
         lastPoint = {x: e.offsetX, y: e.offsetY};
@@ -656,6 +654,7 @@ function fillTextBoxes(curTextBoxes) {
         var borderWidth = parseInt(window.getComputedStyle(obj).getPropertyValue('border-width'));
         var lines = obj.value.split('\n');
         for (var i = 0; i<lines.length; i++) {
+            //reset fillstyle
             ctx.fillStyle = '#000000';
             ctx.fillText(lines[i], parseInt(obj.style.left) - canvas.getBoundingClientRect().x + borderWidth, 
             parseInt(obj.style.top) - canvas.getBoundingClientRect().y + borderWidth + i*lineHeight);
