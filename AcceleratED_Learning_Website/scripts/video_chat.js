@@ -798,7 +798,7 @@ function populateDrawBar2() {
         "gg-arrow-right",
         "sizeDot",
         "text",
-        "text",
+        "overlay",
         "gg-controller",
         "gg-erase",
         "gg-trash"
@@ -821,6 +821,17 @@ function populateDrawBar2() {
             btnContents = document.createElement("i");
             btnContents.classList.add("center");
             btnContents.textContent = "Tt";
+            menuBtn.addEventListener("click", addTextBox, false);
+            menuBtn.appendChild(btnContents);
+            document.getElementById("drawBar").appendChild(menuBtn);
+            continue;
+        } if(buttonType == "overlay") {
+            menuBtn = document.createElement("div");
+            menuBtn.classList.add("canvasBtn");
+            btnContents = document.createElement("i");
+            btnContents.classList.add("center");
+            btnContents.textContent = "Ov";
+            menuBtn.addEventListener("click", showOverlay, false);
             menuBtn.appendChild(btnContents);
             document.getElementById("drawBar").appendChild(menuBtn);
             continue;
