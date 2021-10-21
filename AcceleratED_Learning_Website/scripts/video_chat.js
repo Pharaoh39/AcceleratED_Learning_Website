@@ -155,9 +155,7 @@ function line(e) {
 function rectangle(e) {
     let offsetX, offsetY;
     if(e.buttons) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        redrawCanvas(drawings);
-        fillTextBoxes(textBoxes);
+        ctx.putImageData(imageData, 0, 0);
         if(!lastPoint) {
             lastPoint = {x: e.offsetX, y: e.offsetY};
             return;
@@ -181,6 +179,7 @@ function rectangle(e) {
             currentLine.points.push(lastPoint);
             currentLine.points.push({x: e.offsetX-lastPoint.x, y: e.offsetY-lastPoint.y});
             drawings.push(currentLine);
+            imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
         }
         lastPoint = null;
     }
@@ -192,9 +191,7 @@ function rectangle(e) {
 function circle(e) {
     let radiusX, radiusY;
     if(e.buttons) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        redrawCanvas(drawings);
-        fillTextBoxes(textBoxes);
+        ctx.putImageData(imageData, 0, 0);
         if(!lastPoint) {
             lastPoint = {x: e.offsetX, y: e.offsetY};
             return;
@@ -220,6 +217,7 @@ function circle(e) {
             currentLine.points.push(lastPoint);
             currentLine.points.push({x: radiusX, y: radiusY});
             drawings.push(currentLine);
+            imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
         }
         lastPoint = null;
     }
@@ -952,12 +950,14 @@ function goToPrevPage() {
 }
 
 function rectangleDraw(e) {
+    imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
     changeCanvasFunction("rect");
     canvas.style.cursor = "default";
     menuItemActive(e);
 }
 
 function circleDraw(e) {
+    imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
     changeCanvasFunction("circle");
     canvas.style.cursor = "default";
     menuItemActive(e);
