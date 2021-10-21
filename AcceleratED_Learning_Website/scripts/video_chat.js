@@ -46,7 +46,7 @@ let ctx = canvas.getContext("2d");
 var lastPoint;
 var canvasFunction;
 changeCanvasFunction("pen");
-var penSize = 2;
+var penSize = 5;
 var textLastPoint;
 
 var pages = [];
@@ -64,9 +64,7 @@ var imageData;
 // resize the canvas based on the window size and center the whiteboard menu vertically in the canvas
 function resize() {
     ctx.canvas.width = canvas.parentElement.clientWidth;
-    ctx.canvas.height = canvas.parentElement.clientHeight;
-    
-    document.getElementById("drawBar").style.top = (canvas.parentElement.clientHeight/2 - document.getElementById("drawBar").clientHeight/2 + 70)+ 'px';
+    ctx.canvas.height = canvas.parentElement.clientHeight - 52;
     clearCanvas();
 }
 
@@ -774,137 +772,117 @@ function prevPage() {
 /* ---------------------------------------------------- */
 
 
-const drawColors = ["#4198e9", "#e94b41", "#e9b041", "#44e941", "#b341e9"];
-const secondaryColors = ["#a3c4e3", "#eba4a0", "#ebd3a4", "#a0ed9f", "#d2a0eb"];
+const drawColors = ["#4198e9", "#e94b41", "#e9b041", "#44e941", "#b341e9", "#000000"];
+const secondaryColors = ["#a3c4e3", "#eba4a0", "#ebd3a4", "#a0ed9f", "#d2a0eb", "#e6e6e6"];
 
 var activeColor = "#4198e9";
 var activeSecondaryColor = "#a3c4e3";
 var activeDot = null;
-var lineOption = null;
-var squareOption = null;
-var circleOption = null;
 
-// create all of the menu elements dynamically
-function populateDrawBar() {
+const rgb2hex = (rgb) => `#${rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/).slice(1).map(n => parseInt(n, 10).toString(16).padStart(2, '0')).join('')}`;
 
-    for(let color of drawColors) {
-        let borderDiv = document.createElement("div");
-        borderDiv.classList.add("selectorIndicator");
-        if(activeColor == color) {
-            borderDiv.classList.add("selectorActive");
-            activeDot = borderDiv;
+// some more functions run on setup
+//populateDrawBar();
+window.onmousemove = move;
+window.onresize = resize;
+resize();
+
+
+function populateDrawBar2() {
+
+    let buttons = [
+        "gg-pen",
+        "gg-border-style-solid",
+        "gg-shape-square",
+        "gg-shape-circle",
+        "colorRect",
+        "pointer",
+        "gg-arrow-left",
+        "pageNumber",
+        "gg-arrow-right",
+        "sizeDot",
+        "text",
+        "text",
+        "gg-controller",
+        "gg-erase",
+        "gg-trash"
+    ];
+    let menuBtn, btnContents;
+
+    for(let buttonType of buttons) {
+
+        if(buttonType == "pageNumber") {
+            menuBtn = document.createElement("div");
+            menuBtn.classList.add("center");
+            menuBtn.textContent = "0/0";
+            document.getElementById("drawBar").appendChild(menuBtn);
+            menuBtn.id = "pageCount";
+            continue;
+        } else 
+        if(buttonType == "text") {
+            menuBtn = document.createElement("div");
+            menuBtn.classList.add("canvasBtn");
+            btnContents = document.createElement("i");
+            btnContents.classList.add("center");
+            btnContents.textContent = "Tt";
+            menuBtn.appendChild(btnContents);
+            document.getElementById("drawBar").appendChild(menuBtn);
+            continue;
+        } else {
+            activeDot = menuBtn;
+            menuBtn = document.createElement("div");
+            menuBtn.classList.add("canvasBtn");
+            btnContents = document.createElement("i");
+            btnContents.classList.add(buttonType, "center");
+            menuBtn.appendChild(btnContents);
+            document.getElementById("drawBar").appendChild(menuBtn);
+
+            switch(buttonType) {
+                case "gg-pen":
+                    menuBtn.addEventListener("click", enablePen, false);
+                    break;
+                case "gg-shape-square":
+                    menuBtn.addEventListener("click", rectangleDraw, false);
+                    break;
+                case "gg-shape-circle":
+                    menuBtn.addEventListener("click", circleDraw, false);
+                    break;
+                case "gg-border-style-solid":
+                    menuBtn.addEventListener("click", lineDraw, false);
+                    break;
+                case "colorRect":
+                    activeColorDiv = menuBtn;
+                    menuBtn.addEventListener("click", colorsDropDown, false);
+                    break;
+                case "pointer":
+                    menuBtn.addEventListener("click", pointerMenu, false);
+                    break;
+                case "gg-arrow-left":
+                    menuBtn.addEventListener("click", prevPage, false);
+                    break;
+                case "gg-arrow-right":
+                    menuBtn.addEventListener("click", nextPage, false);
+                    break;
+                case "gg-controller":
+                    menuBtn.addEventListener("click", moveObject, false);
+                    break;
+                case "gg-trash":
+                    menuBtn.addEventListener("click", clearCanvas, false);
+                    break;
+                case "sizeDot":
+                    btnContents.id = "penSize";
+                    menuBtn.addEventListener("click", lineSizeMenu, false);
+                    break;
+            }
+            
         }
-        let dotDiv = document.createElement("div");
-        dotDiv.classList.add("colorDot");
-        dotDiv.style.backgroundColor = color;
-        dotDiv.addEventListener("click", changeDrawColor,false);
-        borderDiv.appendChild(dotDiv);
-        var holder = document.getElementById("drawBar");
-        holder.appendChild(borderDiv);
     }
-
-    // clear button
-    let borderDiv = document.createElement("div");
-    borderDiv.classList.add("selectorIndicator");
-    let dotDiv = document.createElement("div");
-    dotDiv.classList.add("colorDot");
-    dotDiv.style.backgroundColor = "grey";
-    dotDiv.textContent = "C";
-    dotDiv.addEventListener("click", clearCanvas, false);
-    borderDiv.appendChild(dotDiv);
-    document.getElementById("drawBar").appendChild(borderDiv);
-
-    // pointer button
-    borderDiv = document.createElement("div");
-    borderDiv.classList.add("selectorIndicator");
-    dotDiv = document.createElement("div");
-    dotDiv.classList.add("pointer");
-    dotDiv.addEventListener("click", pointerMenu, false);
-    borderDiv.appendChild(dotDiv);
-    document.getElementById("drawBar").appendChild(borderDiv);
-
-    // line button
-    borderDiv = document.createElement("div");
-    borderDiv.classList.add("selectorIndicator");
-    dotDiv = document.createElement("div");
-    dotDiv.classList.add("line");
-    dotDiv.addEventListener("click", lineDraw, false);
-    dotDiv.style.backgroundColor = activeColor;
-    lineOption = dotDiv;
-    borderDiv.appendChild(dotDiv);
-    document.getElementById("drawBar").appendChild(borderDiv);
-
-    // rectangle button
-    borderDiv = document.createElement("div");
-    borderDiv.classList.add("selectorIndicator");
-    dotDiv = document.createElement("div");
-    dotDiv.classList.add("rectangle");
-    dotDiv.addEventListener("click", rectangleDraw, false);
-    squareOption = dotDiv;
-    borderDiv.appendChild(dotDiv);
-    document.getElementById("drawBar").appendChild(borderDiv);
-
-    // circle button
-    borderDiv = document.createElement("div");
-    borderDiv.classList.add("selectorIndicator");
-    dotDiv = document.createElement("div");
-    dotDiv.classList.add("circle");
-    dotDiv.addEventListener("click", circleDraw, false);
-    circleOption = dotDiv;
-    borderDiv.appendChild(dotDiv);
-    document.getElementById("drawBar").appendChild(borderDiv);
-
-    // line size button
-    borderDiv = document.createElement("div");
-    borderDiv.classList.add("selectorIndicator");
-    borderDiv.classList.add("selectorActive");
-    dotDiv = document.createElement("div");
-    dotDiv.classList.add("penSize");
-    dotDiv.style.backgroundColor = "grey";
-    dotDiv.addEventListener("click", lineSize, false);
-    borderDiv.appendChild(dotDiv);
-    document.getElementById("drawBar").appendChild(borderDiv);
-
-    // move/edit button
-    // this button functionality should be updated to the other buttons in the future
-    borderDiv = document.createElement("div");
-    borderDiv.classList.add("selectorIndicator");
-    dotDiv = document.createElement("div");
-    dotDiv.classList.add("colorDot");
-    dotDiv.style.backgroundColor = "grey";
-    dotDiv.textContent = "M";
-    dotDiv.addEventListener("click", moveObject, false);
-    borderDiv.appendChild(dotDiv);
-    document.getElementById("drawBar").appendChild(borderDiv);
-
-    //Add textbox button
-    borderDiv = document.createElement("div");
-    borderDiv.classList.add("selectorIndicator");
-    dotDiv = document.createElement("div");
-    dotDiv.classList.add("colorDot");
-    dotDiv.style.backgroundColor = "grey";
-    dotDiv.textContent = "T";
-    dotDiv.addEventListener("click", addTextBox, false);
-    borderDiv.appendChild(dotDiv);
-    document.getElementById("drawBar").appendChild(borderDiv);
-
-    //Add overlay button
-    borderDiv = document.createElement("div");
-    borderDiv.classList.add("selectorIndicator");
-    dotDiv = document.createElement("div");
-    dotDiv.classList.add("colorDot");
-    dotDiv.style.backgroundColor = "grey";
-    dotDiv.textContent = "O";
-    dotDiv.addEventListener("click", showOverlay, false);
-    borderDiv.appendChild(dotDiv);
-    document.getElementById("drawBar").appendChild(borderDiv);
 }
 
-// indicates a menu item is selected by surrounding it by a circle
 function menuItemActive(e) {
-    activeDot.classList.remove("selectorActive");
-    activeDot = e.currentTarget.parentNode;
-    activeDot.classList.add("selectorActive");
+    activeDot.classList.remove("canvasBtnActive");
+    activeDot = e.currentTarget;
+    activeDot.classList.add("canvasBtnActive");
 }
 
 //Check if need to draw textBoxes onto canvas
@@ -919,26 +897,18 @@ function changeCanvasFunction(newFunc) {
     canvasFunction = newFunc;
 }
 
-// changes the pen color when drawing
-function changeDrawColor(e) {
-    changeCanvasFunction("pen");
+function enablePen(e) {
+    canvasFunction = "pen";
     canvas.style.cursor = "default";
     menuItemActive(e);
-    activeColor = e.currentTarget.style.backgroundColor;
-    activeSecondaryColor = secondaryColors[drawColors.indexOf(rgb2hex(activeColor))];
-    lineOption.style.backgroundColor = activeColor;
-    squareOption.style.borderColor = activeColor;
-    squareOption.style.backgroundColor = activeSecondaryColor;
-    circleOption.style.borderColor = activeColor;
-    circleOption.style.backgroundColor = activeSecondaryColor;
 }
 
 function pointerMenu(e) {
     changeCanvasFunction("pointer");
     //take snapshot of current canvas
     imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
-    menuItemActive(e);
     canvas.style.cursor = "none";
+    menuItemActive(e);
 }
 
 function lineDraw(e) {
@@ -992,29 +962,107 @@ function moveObject(e) {
     menuItemActive(e);
 }
 
-function lineSize(e) {
-    let min = 2;
-    let max = 20;
-    /*let currentPenSize = e.currentTarget.innerWidth;
-    console.log(e.currentTarget);
-    console.log(currentPenSize);*/
-    // cannot seem to get the width of the object from the DOM
-    // it would be more accurate to get the current size instead of assuming they will always match up
-    if(penSize == max) {
-        e.currentTarget.style.width = min + "px";
-        e.currentTarget.style.height = min + "px";
-        penSize = min;
+// TODO: do these event listeners have to be removed later?
+let menuList = [];
+let activeColorDiv = null;
+function colorsDropDown(e) {
+    let menuBtn, colorChoice;
+    let btn = e.currentTarget;
+    let counter = 0;
+    if(menuList.length == 0) {
+        let info = btn.getBoundingClientRect();
+        for(let i = 1; i <= drawColors.length; i++) {
+            if(drawColors[i-1] != activeColor) {
+                menuBtn = document.createElement("div");
+                menuBtn.id = drawColors[i-1];
+                menuBtn.classList.add("canvasBtnAbs");
+                menuBtn.style.height = info.height + "px";
+                menuBtn.style.width = info.width + "px";
+                menuBtn.style.top = (info.top - info.height*(counter+1)) + "px";
+                menuBtn.style.left = info.left + "px";
+                colorChoice = document.createElement("i");
+                colorChoice.classList.add("colorRect", "center");
+                colorChoice.style.backgroundColor = drawColors[i-1];
+                menuBtn.appendChild(colorChoice);
+                menuList.push(menuBtn);
+                document.getElementById("drawBar").appendChild(menuBtn);
+                menuBtn.addEventListener("click", changeColor, false);
+                counter++;
+            }
+        }
     } else {
-        e.currentTarget.style.width = (penSize + 2) + "px";
-        e.currentTarget.style.height = (penSize + 2) + "px";
-        penSize = penSize + 1;
+        for(let element of menuList) {
+            element.remove();
+        }
+        menuList = [];
     }
 }
 
-const rgb2hex = (rgb) => `#${rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/).slice(1).map(n => parseInt(n, 10).toString(16).padStart(2, '0')).join('')}`;
+function changeColor(e) {
+    let color = e.currentTarget.id;
+    activeColor = color;
+    activeSecondaryColor = secondaryColors[drawColors.indexOf(activeColor)];
+    for(let element of menuList) {
+        element.remove();
+    }
+    menuList = [];
+    activeColorDiv.children[0].style.backgroundColor = activeColor;
+}
 
-// some more functions run on setup
-populateDrawBar();
-window.onmousemove = move;
-window.onresize = resize;
-resize();
+var menuOpen = false;
+var popupElement = null;
+// TODO: don't have to delete and recreate it, just create it once and hide it!
+function lineSizeMenu(e) {
+
+    let btn = e.currentTarget;
+    let info = btn.getBoundingClientRect();
+
+    if(!menuOpen) {
+        menuOpen = true;
+        let sizeChooserPopup = document.createElement("div");
+        sizeChooserPopup.classList.add("lineSizePopup");
+        sizeChooserPopup.style.height = info.height + "px";
+        sizeChooserPopup.style.width = info.width + "px";
+        sizeChooserPopup.style.top = (info.top - info.height) + "px";
+        sizeChooserPopup.style.left = info.left + "px";
+
+        let decreaseSize = document.createElement("i");
+        decreaseSize.classList.add("canvasBtn", "center");
+        decreaseSize.textContent = "-";
+        decreaseSize.addEventListener("click", decreasePenSize, false);
+
+        let increaseSize = document.createElement("i");
+        increaseSize.classList.add("canvasBtn", "center");
+        increaseSize.textContent = "+";
+        increaseSize.addEventListener("click", increasePenSize, false);
+
+        sizeChooserPopup.appendChild(decreaseSize);
+        sizeChooserPopup.appendChild(increaseSize);
+        document.getElementById("drawBar").appendChild(sizeChooserPopup);
+        popupElement = sizeChooserPopup;
+    } else {
+        popupElement.remove();
+        popupElement = null;
+        menuOpen = false;
+    }
+    
+}
+function decreasePenSize(e) {
+    let min = 2;
+    if(penSize > min) {
+        penSize -= 2;
+    }
+    document.getElementById("penSize").style.width = penSize + "px";
+    document.getElementById("penSize").style.height = penSize + "px";
+}
+function increasePenSize(e) {
+    let max = 20;
+    if(penSize < max) {
+        penSize += 2;
+    }
+    document.getElementById("penSize").style.width = penSize + "px";
+    document.getElementById("penSize").style.height = penSize + "px";
+}
+
+
+populateDrawBar2();

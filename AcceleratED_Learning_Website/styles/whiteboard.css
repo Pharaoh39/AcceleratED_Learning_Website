@@ -65,13 +65,15 @@ video {
 
 
 #drawBar {
-    width: 60px;
-    position: absolute;
-    top: 250px;
-    left: 20px;
+    height: 50px;
+    border-top: 2px solid gray;
+    background: none;
+    display: grid;
+    grid-template-columns: repeat(15, 1fr);
+    gap: 10px;
 }
 
-.selectorIndicator {
+/*.selectorIndicator {
     border-radius: 100%;
     margin: 5px;
     padding: 3px;
@@ -79,7 +81,7 @@ video {
 }
 .selectorActive {
     outline: 2px solid var(--bdr-color2);
-}
+}*/
 
 .colorDot {
     width: 30px;
@@ -205,3 +207,73 @@ video {
     display: inline-block;
     padding: 3px;
 }
+.center {
+    place-self: center;
+    text-align: center;
+}
+
+.canvasBtn {
+    place-self: stretch;
+    border-radius: 5px;
+    margin: 5px 5px;
+    display: grid;
+    grid-template-columns: auto;
+    grid-template-rows: auto;
+    cursor: default;
+    cursor: pointer;
+}
+.canvasBtn:hover {
+    background-color: #e0e9f1;
+}
+.canvasBtn:active {
+    background-color: #ACC9E4;
+    box-shadow: inset 0px 3px 5px gray;
+}
+.canvasBtnActive {
+    background-color: #ACC9E4;
+    box-shadow: inset 0px 3px 5px gray;
+}
+
+.canvasBtnAbs {
+    position: absolute;
+    border-radius: 5px;
+    display: grid;
+    grid-template-columns: auto;
+    grid-template-rows: auto;
+    cursor: default;
+    border: 1px solid gray;
+    background-color: white;
+    cursor: pointer;
+}
+.canvasBtnAbs:hover {
+    background-color: #e0e9f1;
+}
+
+.colorRect {
+    place-self: stretch;
+    margin: 8px;
+    background-color: #4198e9;
+    border-radius: 3px;
+}
+
+.lineSizePopup {
+    position: absolute;
+    border-radius: 5px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: auto;
+    cursor: default;
+    border: 1px solid gray;
+    background-color: white;
+    cursor: pointer;
+    font-size: 28px;
+}
+.sizeDot {
+    width: 5px;
+    height: 5px;
+    margin: 0;
+    padding: 0;
+    background-color: black;
+    border-radius: 100%;
+}
+
