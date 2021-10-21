@@ -724,10 +724,6 @@ function redrawCircle(drawing) {
 /* ---------- Javascript for Page menu ---------- */
 /* ---------------------------------------------- */
 
-// create event listeners for the page control buttons
-document.getElementById("forward").addEventListener("click", goToNextPage, false);
-document.getElementById("backward").addEventListener("click", goToPrevPage, false);
-
 // loads the next page or creates a new page
 function nextPage() {
     pages[currentPage - 1] = {drawings: drawings, curTextBoxes: textBoxes};
