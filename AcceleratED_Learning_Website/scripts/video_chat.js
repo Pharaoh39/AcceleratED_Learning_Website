@@ -810,7 +810,7 @@ function populateDrawBar2() {
         if(buttonType == "pageNumber") {
             menuBtn = document.createElement("div");
             menuBtn.classList.add("center");
-            menuBtn.textContent = "0/0";
+            menuBtn.textContent = "1/1";
             document.getElementById("drawBar").appendChild(menuBtn);
             menuBtn.id = "pageCount";
             continue;
@@ -854,10 +854,10 @@ function populateDrawBar2() {
                     menuBtn.addEventListener("click", pointerMenu, false);
                     break;
                 case "gg-arrow-left":
-                    menuBtn.addEventListener("click", prevPage, false);
+                    menuBtn.addEventListener("click", goToPrevPage, false);
                     break;
                 case "gg-arrow-right":
-                    menuBtn.addEventListener("click", nextPage, false);
+                    menuBtn.addEventListener("click", goToNextPage, false);
                     break;
                 case "gg-controller":
                     menuBtn.addEventListener("click", moveObject, false);
@@ -894,7 +894,7 @@ function changeCanvasFunction(newFunc) {
 }
 
 function enablePen(e) {
-    canvasFunction = "pen";
+    changeCanvasFunction("pen");
     canvas.style.cursor = "default";
     menuItemActive(e);
 }
