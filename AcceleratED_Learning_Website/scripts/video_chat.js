@@ -75,6 +75,7 @@ function clearCanvas() {
         box.remove();
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
 }
 
 // pressing ctrl+z will remove the last drawn element on the page
