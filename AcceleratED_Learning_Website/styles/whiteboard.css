@@ -69,11 +69,11 @@ video {
     border-top: 2px solid gray;
     background: none;
     display: grid;
-    grid-template-columns: repeat(13, 1fr);
+    grid-template-columns: repeat(15, 1fr);
     gap: 10px;
 }
 
-.selectorIndicator {
+/*.selectorIndicator {
     border-radius: 100%;
     margin: 5px;
     padding: 3px;
@@ -81,7 +81,7 @@ video {
 }
 .selectorActive {
     outline: 2px solid var(--bdr-color2);
-}
+}*/
 
 .colorDot {
     width: 30px;
@@ -236,5 +236,26 @@ video {
     margin: 8px;
     background-color: #4198e9;
     border-radius: 3px;
+}
+
+.lineSizePopup {
+    position: absolute;
+    border-radius: 5px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: auto;
+    cursor: default;
+    border: 1px solid gray;
+    background-color: white;
+    cursor: pointer;
+    font-size: 28px;
+}
+.sizeDot {
+    width: 5px;
+    height: 5px;
+    margin: 0;
+    padding: 0;
+    background-color: black;
+    border-radius: 100%;
 }
 
