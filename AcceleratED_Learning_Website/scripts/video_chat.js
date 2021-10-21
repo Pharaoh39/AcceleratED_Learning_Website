@@ -373,7 +373,7 @@ function drawEditSelectors(selectedObject) {
         offset = {x: selectedObject.points[1].x, y: selectedObject.points[1].y};
     } else if(selectObject.type == "line") {
         origin = {x: selectedObject.points[0].x, y: selectedObject.points[0].y};
-        offset = {x: Math.abs(selectedObject.points[1].x-selectedObject.points[0].x), y: Math.abs(selectedObject.points[1].y-selectedObject.points[0].y)};
+        offset = {x: selectedObject.points[1].x-selectedObject.points[0].x, y: selectedObject.points[1].y-selectedObject.points[0].y};
     }
 
     let selectorRadius = 5;
