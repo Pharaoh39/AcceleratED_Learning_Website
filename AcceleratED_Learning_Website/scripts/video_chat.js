@@ -293,11 +293,21 @@ function pen(e) {
 
 // simulates an eraser by drawing with the same color as the canvas background
 function erase(e) {
+
+    let eraserSize = penSize*4;
+
+    /*ctx.beginPath();
+    ctx.arc(e.offsetX, e.offsetY, eraserSize/2, 0, 2*Math.PI);
+    ctx.strokeStyle = "grey";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5,5]);
+    ctx.stroke();*/
+
     if(e.buttons) {
         // if newline
         if(!lastPoint) {
             drawings.push(currentLine);
-            currentLine = {type: "poly", color: "white", lineWidth: penSize, points: []};
+            currentLine = {type: "poly", color: "white", lineWidth: penSize*4, points: []};
             lastPoint = {x: e.offsetX, y: e.offsetY};
             currentLine.points.push(lastPoint);
             return;
@@ -307,7 +317,7 @@ function erase(e) {
         ctx.moveTo(lastPoint.x, lastPoint.y);
         ctx.lineTo(e.offsetX, e.offsetY);
         ctx.strokeStyle = "white"/*canvas.style.backgroundColor*/;
-        ctx.lineWidth = penSize*4;
+        ctx.lineWidth = eraserSize;
         ctx.lineCap = "round";
         ctx.stroke();
         lastPoint = {x: e.offsetX, y: e.offsetY};
@@ -315,6 +325,7 @@ function erase(e) {
     } else {
         lastPoint = null;
     }
+    
 }
 
 
