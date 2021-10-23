@@ -206,7 +206,6 @@ function circle(e) {
             radiusX >= radiusY ? radiusY = radiusX : radiusX = radiusY;
         }
         ctx.ellipse(lastPoint.x, lastPoint.y, radiusX, radiusY, 0, 0, 2*Math.PI);
-        console.log("draw circle");
         ctx.strokeStyle = activeColor;
         ctx.fillStyle = activeSecondaryColor;
         ctx.lineWidth = penSize;
@@ -296,12 +295,9 @@ function erase(e) {
 
     let eraserSize = penSize*4;
 
-    /*ctx.beginPath();
-    ctx.arc(e.offsetX, e.offsetY, eraserSize/2, 0, 2*Math.PI);
-    ctx.strokeStyle = "grey";
-    ctx.lineWidth = 1;
-    ctx.setLineDash([5,5]);
-    ctx.stroke();*/
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    redrawCanvas(drawings);
+    redrawLine(currentLine);
 
     if(e.buttons) {
         // if newline
@@ -325,6 +321,14 @@ function erase(e) {
     } else {
         lastPoint = null;
     }
+
+    ctx.beginPath();
+    ctx.arc(e.offsetX, e.offsetY, eraserSize/2+1, 0, 2*Math.PI);
+    ctx.strokeStyle = "grey";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5,5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
     
 }
 
@@ -750,14 +754,6 @@ function redrawCircle(drawing) {
     ctx.fill();
     ctx.stroke();
 }
-
-/* --------------------------------------------------- */
-/* ---------- Advanced eraser functionality ---------- */
-/* --------------------------------------------------- */
-
-
-
-
 
 /* ---------------------------------------------- */
 /* ---------- Javascript for Page menu ---------- */
