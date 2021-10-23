@@ -92,6 +92,7 @@ document.addEventListener('keydown', function(event) {
 
 // function to handle the different functions for the differen whiteboard tools that require a mouse position
 function move(e) {
+    if(e.target.id != "canvas") return;
     switch(canvasFunction) {
         case "pen":
             pen(e);
