@@ -1,0 +1,25 @@
+{
+  "name": "accelerated_learning_website",
+  "version": "1.0.0",
+  "description": "AcceleratED Learning LLC. is a web application that features an on-line reading intervention\r platform that supports students struggling with reading by providing a community of trained\r tutors that provide virtual research-based instruction during school. We are focused on creating\r a kid-friendly video teleconferencing platform that will be able to support students during school.",
+  "main": "Server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/baberle/AcceleratED_Learning_Website.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/baberle/AcceleratED_Learning_Website/issues"
+  },
+  "homepage": "https://github.com/baberle/AcceleratED_Learning_Website#readme",
+  "dependencies": {
+    "ejs": "^3.1.6",
+    "express": "^4.17.1",
+    "socket.io": "^4.3.1"
+  }
+}

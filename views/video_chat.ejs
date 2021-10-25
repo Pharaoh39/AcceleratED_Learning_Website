@@ -7,6 +7,7 @@
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="styles/whiteboard.css">
+        <link rel="stylesheet" href="styles/icons.css">
     </head>
     <body>
 
@@ -15,20 +16,27 @@
         </div>
 
         <div class="grid-item canvasDiv">
-            <div id="drawBar"></div>
+
             <canvas id="canvas"></canvas>
+            <div id="drawBar"></div>
         </div>
 
         <div class="grid-item video">
             <video autoplay="true" id="video_element"></video>
         </div>
 
-        <div class="grid-item chat">Chat</div>
-
+        <div class="grid-item chat">
+            Chat
+            <ul class="messages" id="messageList"></ul>
+            <input class="chat-bottom-box message-box"
+                type="text"
+                id="messageBox"
+                placeholder="Type your message here"
+            />
+            <div class="chat-bottom-box submit-box btn" id="chatSubmitButton">S</div>
+        </div>
+        
         <div class="controls">
-            <div class="grid-item bottomItem btn" id="backward"><--</div>
-            <div class="grid-item bottomItem" id="pageCount">0/0</div>
-            <div class="grid-item bottomItem btn" id="forward">--></div>
             <div class="grid-item bottomItem btn" id="showCamera">Show Camera</div>
         </div>
         <script>

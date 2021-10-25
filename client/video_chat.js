@@ -8,8 +8,14 @@ const myPeer = new Peer(undefined, {
   secure: true,
   port: '443'
 });
+
+var getUserMedia =
+  navigator.getUserMedia ||
+  navigator.webkitGetUserMedia ||
+  navigator.mozGetUserMedia;
+
 const myVideo = document.createElement('video');
-//myVideo.muted = true
+var myUserId;
 const peers = {};
 var videoStreams = [];
 navigator.mediaDevices.getUserMedia({
@@ -41,6 +47,33 @@ navigator.mediaDevices.getUserMedia({
     console.log("Problem with video");
 });;
 
+    const chatBox =  document.getElementById("messageBox");
+    document.getElementById("chatSubmitButton").addEventListener("click", (e) => {
+        console.log(chatBox.value);
+        if(chatBox.value != ""){
+            console.log("not empty");
+            socket.emit('message-submitted', chatBox.value, myUserId);
+            chatBox.value = "";
+        }
+    });
+
+    socket.on("createMessage", (message, messageUserId) => {
+        console.log(message);
+        console.log(messageUserId);
+        let newMsg = document.createElement("li");
+        newMsg.innerHTML = message;
+        newMsg.classList.add("message-appear");
+        if(messageUserId == myUserId){
+            console.log("mine");
+            newMsg.classList.add("my-message");
+        }
+        else {
+            console.log("thiers");
+            newMsg.classList.add("their-message");
+        }
+        document.getElementById("messageList").append(newMsg);
+    });
+    
 socket.on('user-disconnected', userId => {
     videoElement.srcObject = videoStreams[0];
     if (peers[userId]){
@@ -50,6 +83,9 @@ socket.on('user-disconnected', userId => {
 
 myPeer.on('open', id => {
     console.log("Peerjs Connected");
+    console.log("below is peer id");
+    console.log(id);
+    myUserId = id;
     socket.emit('join-room', ROOM_ID, id);
 });
 
@@ -71,25 +107,22 @@ function addVideoStream(video, stream) {
     console.log(stream);
     videoStreams.push(stream);
     videoElement.srcObject = stream
-//   video.addEventListener('loadedmetadata', () => {
-//     video.play()
-//   });
 }
 
-// document.getElementById("showCamera").addEventListener("click", showCamera, false);
+document.getElementById("showCamera").addEventListener("click", showCamera, false);
 
-// // the camera toggle does not currently work
-// function showCamera() {
-//     if(constraints.video) {
-//         constraints.video = false;
-//         document.getElementById("showCamera").textContent = "Show Camera";
-//         video.applyConstraints(constraints);
-//     } else {
-//         constraints.video = true;
-//         document.getElementById("showCamera").textContent = "Hide Camera";
-//         video.applyConstraints(constraints);
-//     }
-// }
+// the camera toggle does not currently work
+function showCamera() {
+    if(constraints.video) {
+        constraints.video = false;
+        document.getElementById("showCamera").textContent = "Show Camera";
+        video.applyConstraints(constraints);
+    } else {
+        constraints.video = true;
+        document.getElementById("showCamera").textContent = "Hide Camera";
+        video.applyConstraints(constraints);
+    }
+}
 
 
 
@@ -101,32 +134,38 @@ var canvas = document.getElementById("canvas");
 let ctx = canvas.getContext("2d");
 
 var lastPoint;
-var canvasFunction = "pen";
-var penSize = 2;
+var canvasFunction;
+changeCanvasFunction("pen");
+var penSize = 5;
+var textLastPoint;
 
 var pages = [];
-var currentPage = 0;
+var currentPage = 1;
 var drawings = [];
+var textBoxes = [];
 var currentLine = {
     type: null,
     color: activeColor,
     lineWidth: penSize,
     points: []
 }
+var imageData;
 
 // resize the canvas based on the window size and center the whiteboard menu vertically in the canvas
 function resize() {
     ctx.canvas.width = canvas.parentElement.clientWidth;
-    ctx.canvas.height = canvas.parentElement.clientHeight;
-    
-    document.getElementById("drawBar").style.top = (canvas.parentElement.clientHeight/2 - document.getElementById("drawBar").clientHeight/2 + 70)+ 'px';
+    ctx.canvas.height = canvas.parentElement.clientHeight - 52;
     clearCanvas();
 }
 
 // remove all elements from the convas
 function clearCanvas() {
     drawings = [];
+    for (const box of textBoxes){
+        box.remove();
+    }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
 }
 
 // pressing ctrl+z will remove the last drawn element on the page
@@ -136,6 +175,7 @@ document.addEventListener('keydown', function(event) {
           drawings.pop();
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           redrawCanvas(drawings);
+          fillTextBoxes(textBoxes);
       }
     }
 });
@@ -161,15 +201,17 @@ function move(e) {
         case "move":
             moveShape2(e);
             break;
+        case "textBox":
+            break;
+        case "overlay":
+            break;
         default:
             pen(e);
     }
 }
 
 function line(e) {
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    redrawCanvas(drawings);
+    ctx.putImageData(imageData, 0, 0);
 
     if(e.buttons) {
         if(!lastPoint) {
@@ -191,6 +233,10 @@ function line(e) {
             currentLine.points.push({x: e.offsetX, y: e.offsetY});
             drawings.push(currentLine);
         }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        redrawCanvas(drawings);
+        fillTextBoxes(textBoxes);
+        imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
         lastPoint = null;
     }
 
@@ -200,8 +246,7 @@ function line(e) {
 function rectangle(e) {
     let offsetX, offsetY;
     if(e.buttons) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        redrawCanvas(drawings);
+        ctx.putImageData(imageData, 0, 0);
         if(!lastPoint) {
             lastPoint = {x: e.offsetX, y: e.offsetY};
             return;
@@ -225,6 +270,7 @@ function rectangle(e) {
             currentLine.points.push(lastPoint);
             currentLine.points.push({x: e.offsetX-lastPoint.x, y: e.offsetY-lastPoint.y});
             drawings.push(currentLine);
+            imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
         }
         lastPoint = null;
     }
@@ -236,8 +282,7 @@ function rectangle(e) {
 function circle(e) {
     let radiusX, radiusY;
     if(e.buttons) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        redrawCanvas(drawings);
+        ctx.putImageData(imageData, 0, 0);
         if(!lastPoint) {
             lastPoint = {x: e.offsetX, y: e.offsetY};
             return;
@@ -263,6 +308,7 @@ function circle(e) {
             currentLine.points.push(lastPoint);
             currentLine.points.push({x: radiusX, y: radiusY});
             drawings.push(currentLine);
+            imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
         }
         lastPoint = null;
     }
@@ -272,8 +318,8 @@ function circle(e) {
 //creates a pointer by drawing a red dot at the mouse postion, erasing everything, redrawing all the elements, and repeating
 var secondLastPoint = null;
 function pointer(e) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    redrawCanvas(drawings);
+    //use snapshot to make canvas
+    ctx.putImageData(imageData, 0, 0);
 
     var grd = ctx.createRadialGradient(e.offsetX, e.offsetY, 1, e.offsetX, e.offsetY, 10);
     grd.addColorStop(0, "red");
@@ -531,6 +577,7 @@ function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
         }
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
+        fillTextBoxes(textBoxes);
         drawEditSelectors(selectedObject);
     } else {
         inMotionResize = false;
@@ -563,6 +610,7 @@ function resizeCircleFromPoint(e, ctrlPoint, selectedObject) {
         }
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
+        fillTextBoxes(textBoxes);
         drawEditSelectors(selectedObject);
     } else {
         inMotionResize = false;
@@ -585,6 +633,7 @@ function moveShapeToCursor(e, selectedObject) {
         selectedObject.points[0].y = e.offsetY - cursorOffsetFromOrigin.y;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
+        fillTextBoxes(textBoxes);
         drawEditSelectors(selectedObject);
     } else {
         cursorOffsetFromOrigin = null;
@@ -641,6 +690,83 @@ function redrawLine(drawing) {
     }
 }
 
+//Creates text boxes which can be typed into and dragged around
+function textBox() {
+    var beingDragged = false;
+    var textBox = document.createElement('textarea');
+    textBox.classList.add("textBox");
+
+    textBox.cols = '3';
+    textBox.style.position = 'fixed';
+    textBox.style.left = (500) + 'px';
+    textBox.style.top = (500) + 'px';
+    textBox.style.outline = 'none';
+
+    textBox.addEventListener('input', resizeBox); //Change dimensions of text box depending on text
+
+    //Start dragging sequence
+    textBox.addEventListener('mousedown', function(e) {
+        beingDragged = true;
+        textLastPoint = {x: e.offsetX, y: e.offsetY};
+    }, true);
+
+    //End dragging sequence
+    document.addEventListener('mouseup', function() {
+        beingDragged = false;
+        textLastPoint = null;
+    }, true);
+
+    //Drag text box
+    document.addEventListener('mousemove', function(e) {
+        if (beingDragged) {
+            textBox.style.left = (e.clientX - textLastPoint.x) + 'px';
+            textBox.style.top  = (e.clientY - textLastPoint.y) + 'px';
+        }
+    }, true);
+
+    document.body.appendChild(textBox);
+
+    textBox.focus();
+    textBoxes.push(textBox);
+}
+
+//Draw the contents of the textboxes onto the canvas
+function fillTextBoxes(curTextBoxes) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    redrawCanvas(drawings);
+    ctx.font="16px monospace";
+    ctx.textBaseline = "top";
+    for (let obj of curTextBoxes) {
+        var lineHeight = parseInt(window.getComputedStyle(obj).getPropertyValue('line-height'));
+        var borderWidth = parseInt(window.getComputedStyle(obj).getPropertyValue('border-width'));
+        var lines = obj.value.split('\n');
+        for (var i = 0; i<lines.length; i++) {
+            //reset fillstyle
+            ctx.fillStyle = '#000000';
+            ctx.fillText(lines[i], parseInt(obj.style.left) - canvas.getBoundingClientRect().x + borderWidth, 
+            parseInt(obj.style.top) - canvas.getBoundingClientRect().y + borderWidth + i*lineHeight);
+        }
+    }
+}
+
+function resizeBox() {
+    this.style.height = 'auto';
+    this.style.height = (this.scrollHeight) + "px";
+    var lines = this.value.split('\n');
+    var maxCols = Math.max(...lines.map(line => line.length));
+    if (this.value.length > 3) {
+        this.cols = maxCols;
+    }
+}
+
+//show all textboxes
+function overlay() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    redrawCanvas(drawings);
+    for (let obj of textBoxes) {
+        obj.style.display = "inline-block"
+    }
+}
 
 function redrawRect(drawing) {
     ctx.beginPath();
@@ -675,44 +801,55 @@ function redrawCircle(drawing) {
     ctx.stroke();
 }
 
+/* --------------------------------------------------- */
+/* ---------- Advanced eraser functionality ---------- */
+/* --------------------------------------------------- */
+
+
+
+
 
 /* ---------------------------------------------- */
 /* ---------- Javascript for Page menu ---------- */
 /* ---------------------------------------------- */
 
-// create event listeners for the page control buttons
-document.getElementById("forward").addEventListener("click", nextPage, false);
-document.getElementById("backward").addEventListener("click", prevPage, false);
-
 // loads the next page or creates a new page
 function nextPage() {
-    pages[currentPage] = drawings;
+    pages[currentPage - 1] = {drawings: drawings, curTextBoxes: textBoxes};
     let numPages = pages.length;
-    //console.log(pages);
-    if(currentPage + 1 < numPages) {
-        drawings = pages[currentPage + 1];
+    if(currentPage + 1 <= numPages) {
+        drawings = pages[currentPage].drawings;
+        textBoxes = pages[currentPage].curTextBoxes;
         redrawCanvas(drawings);
+        fillTextBoxes(textBoxes);
     } else {
-        clearCanvas();
+        //Manually clear canvas for now instead of clearCanvas() since that function removes textboxes from document
+        drawings = [];
+        textBoxes = [];
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        numPages += 1;
     }
     currentPage += 1;
-    document.getElementById("pageCount").textContent = (currentPage+1) + "/" + numPages;
+    document.getElementById("pageCount").textContent = (currentPage) + "/" + numPages;
 }
-
+ 
 // loads the previous page if possible
 function prevPage() {
-    pages[currentPage] = drawings;
+    pages[currentPage - 1] = {drawings: drawings, curTextBoxes: textBoxes};
     let numPages = pages.length;
-    if(currentPage - 1 >= 0) {
-        drawings = pages[currentPage - 1];
+    if(currentPage - 1 > 0) {
+        drawings = pages[currentPage - 2].drawings;
+        textBoxes = pages[currentPage - 2].curTextBoxes;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
+        fillTextBoxes(textBoxes);
+        currentPage -= 1;
     } else {
         return;
     }
-    currentPage -= 1;
-    document.getElementById("pageCount").textContent = (currentPage+1) + "/" + numPages;
+    document.getElementById("pageCount").textContent = (currentPage) + "/" + numPages;
 }
+
 
 
 /* ---------------------------------------------------- */
@@ -720,184 +857,310 @@ function prevPage() {
 /* ---------------------------------------------------- */
 
 
-const drawColors = ["#4198e9", "#e94b41", "#e9b041", "#44e941", "#b341e9"];
-const secondaryColors = ["#a3c4e3", "#eba4a0", "#ebd3a4", "#a0ed9f", "#d2a0eb"];
+const drawColors = ["#4198e9", "#e94b41", "#e9b041", "#44e941", "#b341e9", "#000000"];
+const secondaryColors = ["#a3c4e3", "#eba4a0", "#ebd3a4", "#a0ed9f", "#d2a0eb", "#e6e6e6"];
 
 var activeColor = "#4198e9";
 var activeSecondaryColor = "#a3c4e3";
 var activeDot = null;
-var lineOption = null;
-var squareOption = null;
-var circleOption = null;
 
-// create all of the menu elements dynamically
-function populateDrawBar() {
+const rgb2hex = (rgb) => `#${rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/).slice(1).map(n => parseInt(n, 10).toString(16).padStart(2, '0')).join('')}`;
 
-    for(let color of drawColors) {
-        let borderDiv = document.createElement("div");
-        borderDiv.classList.add("selectorIndicator");
-        if(activeColor == color) {
-            borderDiv.classList.add("selectorActive");
-            activeDot = borderDiv;
+// some more functions run on setup
+//populateDrawBar();
+window.onmousemove = move;
+window.onresize = resize;
+resize();
+
+
+function populateDrawBar2() {
+
+    let buttons = [
+        "gg-pen",
+        "gg-border-style-solid",
+        "gg-shape-square",
+        "gg-shape-circle",
+        "colorRect",
+        "pointer",
+        "gg-arrow-left",
+        "pageNumber",
+        "gg-arrow-right",
+        "sizeDot",
+        "text",
+        "overlay",
+        "gg-controller",
+        "gg-erase",
+        "gg-trash"
+    ];
+    let menuBtn, btnContents;
+
+    for(let buttonType of buttons) {
+
+        if(buttonType == "pageNumber") {
+            menuBtn = document.createElement("div");
+            menuBtn.classList.add("center");
+            menuBtn.textContent = "1/1";
+            document.getElementById("drawBar").appendChild(menuBtn);
+            menuBtn.id = "pageCount";
+            continue;
+        } else 
+        if(buttonType == "text") {
+            menuBtn = document.createElement("div");
+            menuBtn.classList.add("canvasBtn");
+            btnContents = document.createElement("i");
+            btnContents.classList.add("center");
+            btnContents.textContent = "Tt";
+            menuBtn.addEventListener("click", addTextBox, false);
+            menuBtn.appendChild(btnContents);
+            document.getElementById("drawBar").appendChild(menuBtn);
+            continue;
+        } if(buttonType == "overlay") {
+            menuBtn = document.createElement("div");
+            menuBtn.classList.add("canvasBtn");
+            btnContents = document.createElement("i");
+            btnContents.classList.add("center");
+            btnContents.textContent = "Ov";
+            menuBtn.addEventListener("click", showOverlay, false);
+            menuBtn.appendChild(btnContents);
+            document.getElementById("drawBar").appendChild(menuBtn);
+            continue;
+        } else {
+            activeDot = menuBtn;
+            menuBtn = document.createElement("div");
+            menuBtn.classList.add("canvasBtn");
+            btnContents = document.createElement("i");
+            btnContents.classList.add(buttonType, "center");
+            menuBtn.appendChild(btnContents);
+            document.getElementById("drawBar").appendChild(menuBtn);
+
+            switch(buttonType) {
+                case "gg-pen":
+                    menuBtn.addEventListener("click", enablePen, false);
+                    break;
+                case "gg-shape-square":
+                    menuBtn.addEventListener("click", rectangleDraw, false);
+                    break;
+                case "gg-shape-circle":
+                    menuBtn.addEventListener("click", circleDraw, false);
+                    break;
+                case "gg-border-style-solid":
+                    menuBtn.addEventListener("click", lineDraw, false);
+                    break;
+                case "colorRect":
+                    activeColorDiv = menuBtn;
+                    menuBtn.addEventListener("click", colorsDropDown, false);
+                    break;
+                case "pointer":
+                    menuBtn.addEventListener("click", pointerMenu, false);
+                    break;
+                case "gg-arrow-left":
+                    menuBtn.addEventListener("click", goToPrevPage, false);
+                    break;
+                case "gg-arrow-right":
+                    menuBtn.addEventListener("click", goToNextPage, false);
+                    break;
+                case "gg-controller":
+                    menuBtn.addEventListener("click", moveObject, false);
+                    break;
+                case "gg-trash":
+                    menuBtn.addEventListener("click", clearCanvas, false);
+                    break;
+                case "sizeDot":
+                    btnContents.id = "penSize";
+                    menuBtn.addEventListener("click", lineSizeMenu, false);
+                    break;
+            }
+            
         }
-        let dotDiv = document.createElement("div");
-        dotDiv.classList.add("colorDot");
-        dotDiv.style.backgroundColor = color;
-        dotDiv.addEventListener("click", changeDrawColor,false);
-        borderDiv.appendChild(dotDiv);
-        var holder = document.getElementById("drawBar");
-        holder.appendChild(borderDiv);
     }
-
-    // clear button
-    let borderDiv = document.createElement("div");
-    borderDiv.classList.add("selectorIndicator");
-    let dotDiv = document.createElement("div");
-    dotDiv.classList.add("colorDot");
-    dotDiv.style.backgroundColor = "grey";
-    dotDiv.textContent = "C";
-    dotDiv.addEventListener("click", clearCanvas, false);
-    borderDiv.appendChild(dotDiv);
-    document.getElementById("drawBar").appendChild(borderDiv);
-
-    // pointer button
-    borderDiv = document.createElement("div");
-    borderDiv.classList.add("selectorIndicator");
-    dotDiv = document.createElement("div");
-    dotDiv.classList.add("pointer");
-    dotDiv.addEventListener("click", pointerMenu, false);
-    borderDiv.appendChild(dotDiv);
-    document.getElementById("drawBar").appendChild(borderDiv);
-
-    // line button
-    borderDiv = document.createElement("div");
-    borderDiv.classList.add("selectorIndicator");
-    dotDiv = document.createElement("div");
-    dotDiv.classList.add("line");
-    dotDiv.addEventListener("click", lineDraw, false);
-    dotDiv.style.backgroundColor = activeColor;
-    lineOption = dotDiv;
-    borderDiv.appendChild(dotDiv);
-    document.getElementById("drawBar").appendChild(borderDiv);
-
-    // rectangle button
-    borderDiv = document.createElement("div");
-    borderDiv.classList.add("selectorIndicator");
-    dotDiv = document.createElement("div");
-    dotDiv.classList.add("rectangle");
-    dotDiv.addEventListener("click", rectangleDraw, false);
-    squareOption = dotDiv;
-    borderDiv.appendChild(dotDiv);
-    document.getElementById("drawBar").appendChild(borderDiv);
-
-    // circle button
-    borderDiv = document.createElement("div");
-    borderDiv.classList.add("selectorIndicator");
-    dotDiv = document.createElement("div");
-    dotDiv.classList.add("circle");
-    dotDiv.addEventListener("click", circleDraw, false);
-    circleOption = dotDiv;
-    borderDiv.appendChild(dotDiv);
-    document.getElementById("drawBar").appendChild(borderDiv);
-
-    // line size button
-    borderDiv = document.createElement("div");
-    borderDiv.classList.add("selectorIndicator");
-    borderDiv.classList.add("selectorActive");
-    dotDiv = document.createElement("div");
-    dotDiv.classList.add("penSize");
-    dotDiv.style.backgroundColor = "grey";
-    dotDiv.addEventListener("click", lineSize, false);
-    borderDiv.appendChild(dotDiv);
-    document.getElementById("drawBar").appendChild(borderDiv);
-
-    // move/edit button
-    // this button functionality should be updated to the other buttons in the future
-    borderDiv = document.createElement("div");
-    borderDiv.classList.add("selectorIndicator");
-    dotDiv = document.createElement("div");
-    dotDiv.classList.add("colorDot");
-    dotDiv.style.backgroundColor = "grey";
-    dotDiv.textContent = "M";
-    dotDiv.addEventListener("click", moveObject, false);
-    borderDiv.appendChild(dotDiv);
-    document.getElementById("drawBar").appendChild(borderDiv);
 }
 
-// indicates a menu item is selected by surrounding it by a circle
 function menuItemActive(e) {
-    activeDot.classList.remove("selectorActive");
-    activeDot = e.currentTarget.parentNode;
-    activeDot.classList.add("selectorActive");
+    activeDot.classList.remove("canvasBtnActive");
+    activeDot = e.currentTarget;
+    activeDot.classList.add("canvasBtnActive");
 }
 
-// changes the pen color when drawing
-function changeDrawColor(e) {
-    canvasFunction = "pen";
+//Check if need to draw textBoxes onto canvas
+function changeCanvasFunction(newFunc) {
+    if((canvasFunction == 'overlay' || canvasFunction == 'textBox') && newFunc != 'overlay'){
+        fillTextBoxes(textBoxes);
+        for (const obj of textBoxes) {
+            //Hide text boxes
+            obj.style.display = "none";
+        }
+    }
+    canvasFunction = newFunc;
+}
+
+function enablePen(e) {
+    changeCanvasFunction("pen");
     canvas.style.cursor = "default";
     menuItemActive(e);
-    activeColor = e.currentTarget.style.backgroundColor;
-    activeSecondaryColor = secondaryColors[drawColors.indexOf(rgb2hex(activeColor))];
-    lineOption.style.backgroundColor = activeColor;
-    squareOption.style.borderColor = activeColor;
-    squareOption.style.backgroundColor = activeSecondaryColor;
-    circleOption.style.borderColor = activeColor;
-    circleOption.style.backgroundColor = activeSecondaryColor;
 }
 
 function pointerMenu(e) {
-    canvasFunction = "pointer";
-    menuItemActive(e);
+    changeCanvasFunction("pointer");
+    //take snapshot of current canvas
+    imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
     canvas.style.cursor = "none";
+    menuItemActive(e);
 }
 
 function lineDraw(e) {
-    canvasFunction = "line";
+    //take snapshot of current canvas
+    imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+    changeCanvasFunction("line");
     canvas.style.cursor = "default";
     menuItemActive(e);
 }
 
+function addTextBox(e) {
+    changeCanvasFunction("textBox");
+    canvas.style.cursor = "default";
+    menuItemActive(e);
+    textBox();
+}
+
+function showOverlay(e) {
+    changeCanvasFunction("overlay");
+    canvas.style.cursor = "default";
+    menuItemActive(e);
+    overlay();
+}
+
+//Using changeCanvasFunction in case of unfilled textbox
+function goToNextPage() {
+    changeCanvasFunction("nextPage");
+    nextPage();
+}
+
+function goToPrevPage() {
+    changeCanvasFunction("prevPage");
+    prevPage();
+}
+
 function rectangleDraw(e) {
-    canvasFunction = "rect";
+    imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+    changeCanvasFunction("rect");
     canvas.style.cursor = "default";
     menuItemActive(e);
 }
 
 function circleDraw(e) {
-    canvasFunction = "circle";
+    imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+    changeCanvasFunction("circle");
     canvas.style.cursor = "default";
     menuItemActive(e);
 }
 
 function moveObject(e) {
-    canvasFunction = "move";
+    changeCanvasFunction("move");
     canvas.style.cursor = "default";
     menuItemActive(e);
 }
 
-function lineSize(e) {
-    let min = 2;
-    let max = 20;
-    /*let currentPenSize = e.currentTarget.innerWidth;
-    console.log(e.currentTarget);
-    console.log(currentPenSize);*/
-    // cannot seem to get the width of the object from the DOM
-    // it would be more accurate to get the current size instead of assuming they will always match up
-    if(penSize == max) {
-        e.currentTarget.style.width = min + "px";
-        e.currentTarget.style.height = min + "px";
-        penSize = min;
+// TODO: do these event listeners have to be removed later?
+let menuList = [];
+let activeColorDiv = null;
+function colorsDropDown(e) {
+    let menuBtn, colorChoice;
+    let btn = e.currentTarget;
+    let counter = 0;
+    if(menuList.length == 0) {
+        let info = btn.getBoundingClientRect();
+        for(let i = 1; i <= drawColors.length; i++) {
+            if(drawColors[i-1] != activeColor) {
+                menuBtn = document.createElement("div");
+                menuBtn.id = drawColors[i-1];
+                menuBtn.classList.add("canvasBtnAbs");
+                menuBtn.style.height = info.height + "px";
+                menuBtn.style.width = info.width + "px";
+                menuBtn.style.top = (info.top - info.height*(counter+1)) + "px";
+                menuBtn.style.left = info.left + "px";
+                colorChoice = document.createElement("i");
+                colorChoice.classList.add("colorRect", "center");
+                colorChoice.style.backgroundColor = drawColors[i-1];
+                menuBtn.appendChild(colorChoice);
+                menuList.push(menuBtn);
+                document.getElementById("drawBar").appendChild(menuBtn);
+                menuBtn.addEventListener("click", changeColor, false);
+                counter++;
+            }
+        }
     } else {
-        e.currentTarget.style.width = (penSize + 2) + "px";
-        e.currentTarget.style.height = (penSize + 2) + "px";
-        penSize = penSize + 1;
+        for(let element of menuList) {
+            element.remove();
+        }
+        menuList = [];
     }
 }
 
-const rgb2hex = (rgb) => `#${rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/).slice(1).map(n => parseInt(n, 10).toString(16).padStart(2, '0')).join('')}`;
+function changeColor(e) {
+    let color = e.currentTarget.id;
+    activeColor = color;
+    activeSecondaryColor = secondaryColors[drawColors.indexOf(activeColor)];
+    for(let element of menuList) {
+        element.remove();
+    }
+    menuList = [];
+    activeColorDiv.children[0].style.backgroundColor = activeColor;
+}
 
-// some more functions run on setup
-populateDrawBar();
-window.onmousemove = move;
-window.onresize = resize;
-resize();
+var menuOpen = false;
+var popupElement = null;
+// TODO: don't have to delete and recreate it, just create it once and hide it!
+function lineSizeMenu(e) {
+
+    let btn = e.currentTarget;
+    let info = btn.getBoundingClientRect();
+
+    if(!menuOpen) {
+        menuOpen = true;
+        let sizeChooserPopup = document.createElement("div");
+        sizeChooserPopup.classList.add("lineSizePopup");
+        sizeChooserPopup.style.height = info.height + "px";
+        sizeChooserPopup.style.width = info.width + "px";
+        sizeChooserPopup.style.top = (info.top - info.height) + "px";
+        sizeChooserPopup.style.left = info.left + "px";
+
+        let decreaseSize = document.createElement("i");
+        decreaseSize.classList.add("canvasBtn", "center");
+        decreaseSize.textContent = "-";
+        decreaseSize.addEventListener("click", decreasePenSize, false);
+
+        let increaseSize = document.createElement("i");
+        increaseSize.classList.add("canvasBtn", "center");
+        increaseSize.textContent = "+";
+        increaseSize.addEventListener("click", increasePenSize, false);
+
+        sizeChooserPopup.appendChild(decreaseSize);
+        sizeChooserPopup.appendChild(increaseSize);
+        document.getElementById("drawBar").appendChild(sizeChooserPopup);
+        popupElement = sizeChooserPopup;
+    } else {
+        popupElement.remove();
+        popupElement = null;
+        menuOpen = false;
+    }
+    
+}
+function decreasePenSize(e) {
+    let min = 2;
+    if(penSize > min) {
+        penSize -= 2;
+    }
+    document.getElementById("penSize").style.width = penSize + "px";
+    document.getElementById("penSize").style.height = penSize + "px";
+}
+function increasePenSize(e) {
+    let max = 20;
+    if(penSize < max) {
+        penSize += 2;
+    }
+    document.getElementById("penSize").style.width = penSize + "px";
+    document.getElementById("penSize").style.height = penSize + "px";
+}
+
+
+populateDrawBar2();
