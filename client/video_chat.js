@@ -6,7 +6,11 @@ var videoElement = document.querySelector("#video_element");
 const myPeer = new Peer(undefined, {
   host: 'canvas-peerjs-server.herokuapp.com',
   secure: true,
-  port: '443'
+  port: '443',
+  config: {'iceServers': [
+    { url: 'stun:numb.viagenie.ca' },
+    { url: 'turn:numb.viagenie.ca', username: 'wcanelo@outlook.com', credential: 'wcanelo@outlook.com'}
+  ]}
 });
 
 var getUserMedia =
