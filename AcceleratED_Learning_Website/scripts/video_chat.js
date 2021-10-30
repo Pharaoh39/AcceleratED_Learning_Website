@@ -92,6 +92,7 @@ document.addEventListener('keydown', function(event) {
 
 // function to handle the different functions for the differen whiteboard tools that require a mouse position
 function move(e) {
+    if(e.target.id != "canvas") return;
     switch(canvasFunction) {
         case "pen":
             pen(e);
@@ -111,6 +112,8 @@ function move(e) {
         case "move":
             moveShape2(e);
             break;
+        case "erase":
+            erase(e);
         case "textBox":
             break;
         case "overlay":
@@ -204,7 +207,6 @@ function circle(e) {
             radiusX >= radiusY ? radiusY = radiusX : radiusX = radiusY;
         }
         ctx.ellipse(lastPoint.x, lastPoint.y, radiusX, radiusY, 0, 0, 2*Math.PI);
-        console.log("draw circle");
         ctx.strokeStyle = activeColor;
         ctx.fillStyle = activeSecondaryColor;
         ctx.lineWidth = penSize;
@@ -286,6 +288,49 @@ function pen(e) {
     } else {
         lastPoint = null;
     }
+}
+
+
+// simulates an eraser by drawing with the same color as the canvas background
+function erase(e) {
+
+    let eraserSize = penSize*4;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    redrawCanvas(drawings);
+    redrawLine(currentLine);
+
+    if(e.buttons) {
+        // if newline
+        if(!lastPoint) {
+            drawings.push(currentLine);
+            currentLine = {type: "poly", color: "white", lineWidth: penSize*4, points: []};
+            lastPoint = {x: e.offsetX, y: e.offsetY};
+            currentLine.points.push(lastPoint);
+            return;
+        }
+        // else if continuing current line
+        ctx.beginPath();
+        ctx.moveTo(lastPoint.x, lastPoint.y);
+        ctx.lineTo(e.offsetX, e.offsetY);
+        ctx.strokeStyle = "white"/*canvas.style.backgroundColor*/;
+        ctx.lineWidth = eraserSize;
+        ctx.lineCap = "round";
+        ctx.stroke();
+        lastPoint = {x: e.offsetX, y: e.offsetY};
+        currentLine.points.push(lastPoint);
+    } else {
+        lastPoint = null;
+    }
+
+    ctx.beginPath();
+    ctx.arc(e.offsetX, e.offsetY, eraserSize/2+1, 0, 2*Math.PI);
+    ctx.strokeStyle = "grey";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5,5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
 }
 
 
@@ -791,14 +836,6 @@ function redrawCircle(drawing) {
     ctx.stroke();
 }
 
-/* --------------------------------------------------- */
-/* ---------- Advanced eraser functionality ---------- */
-/* --------------------------------------------------- */
-
-
-
-
-
 /* ---------------------------------------------- */
 /* ---------- Javascript for Page menu ---------- */
 /* ---------------------------------------------- */
@@ -959,6 +996,9 @@ function populateDrawBar2() {
                     btnContents.id = "penSize";
                     menuBtn.addEventListener("click", lineSizeMenu, false);
                     break;
+                case "gg-erase":
+                    menuBtn.addEventListener("click", eraseObjects, false);
+                    break;
             }
             
         }
@@ -1049,6 +1089,13 @@ function moveObject(e) {
     canvas.style.cursor = "default";
     menuItemActive(e);
 }
+
+function eraseObjects(e) {
+    changeCanvasFunction("erase");
+    canvas.style.cursor = "default";
+    menuItemActive(e);
+}
+
 
 // TODO: do these event listeners have to be removed later?
 let menuList = [];
