@@ -628,6 +628,9 @@ function resizeCircleFromPoint(e, ctrlPoint, selectedObject) {
             case "btm-right":
                 offset.x = Math.abs(origin.x - e.offsetX);
                 offset.y = Math.abs(origin.y - e.offsetY);
+                if(e.ctrlKey) {
+                    offset.x <= offset.y ? offset.y = offset.x : offset.x = offset.y;
+                }
                 break;
             case "top-center":
             case "btm-center":
