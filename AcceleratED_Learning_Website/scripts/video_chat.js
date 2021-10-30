@@ -905,8 +905,8 @@ function populateDrawBar2() {
     let buttons = [
         "gg-pen",
         "gg-border-style-solid",
-        "gg-shape-square",
-        "gg-shape-circle",
+        /*"gg-shape-square",
+        "gg-shape-circle",*/
         "colorRect",
         "pointer",
         "gg-arrow-left",
@@ -964,7 +964,7 @@ function populateDrawBar2() {
                 case "gg-pen":
                     menuBtn.addEventListener("click", enablePen, false);
                     break;
-                case "gg-shape-square":
+                /*case "gg-shape-square":
                     menuBtn.addEventListener("click", rectangleDraw, false);
                     break;
                 case "gg-shape-circle":
@@ -972,6 +972,12 @@ function populateDrawBar2() {
                     break;
                 case "gg-border-style-solid":
                     menuBtn.addEventListener("click", lineDraw, false);
+                    break;*/
+                case "gg-border-style-solid":
+                    menuBtn.addEventListener("click", lineDraw/*shapesDropdown*/, false);
+                    menuBtn.addEventListener("dblclick", shapesDropdown, false);
+                    activeShape = buttonType;
+                    activeShapeDiv = menuBtn;
                     break;
                 case "colorRect":
                     activeColorDiv = menuBtn;
@@ -1199,5 +1205,98 @@ function increasePenSize(e) {
     document.getElementById("penSize").style.height = penSize + "px";
 }
 
+
+// TODO: do these event listeners have to be removed later?
+let shapesList = ["gg-border-style-solid","gg-shape-square","gg-shape-circle",];
+let menuShapeList = [];
+let activeShapeDiv = null;
+let activeShape = null;
+function shapesDropdown(e) {
+    let menuBtn, shapeChoice;
+    let btn = e.currentTarget;
+    let counter = 0;
+    if(menuShapeList.length == 0) {
+        let info = btn.getBoundingClientRect();
+        for(let i = 1; i <= shapesList.length; i++) {
+            if(shapesList[i-1] != activeShape) {
+                menuBtn = document.createElement("div");
+                menuBtn.id = shapesList[i-1];
+                menuBtn.classList.add("canvasBtnAbs");
+                menuBtn.style.height = info.height + "px";
+                menuBtn.style.width = info.width + "px";
+                menuBtn.style.top = (info.top - info.height*(counter+1)) + "px";
+                menuBtn.style.left = info.left + "px";
+                shapeChoice = document.createElement("i");
+                shapeChoice.classList.add(shapesList[i-1], "center");
+                menuBtn.appendChild(shapeChoice);
+                menuShapeList.push(menuBtn);
+                document.getElementById("drawBar").appendChild(menuBtn);
+                switch(shapesList[i-1]) {
+                    case "gg-border-style-solid":
+                        menuBtn.addEventListener("click", lineDrawActive, false);
+                        break;
+                    case "gg-shape-square":
+                        menuBtn.addEventListener("click", rectangleDrawActive, false);
+                        break;
+                    case "gg-shape-circle":
+                        menuBtn.addEventListener("click", circleDrawActive, false);
+                        break;
+                }
+                counter++;
+            }
+        }
+    } else {
+        for(let element of menuShapeList) {
+            element.remove();
+        }
+        menuShapeList = [];
+    }
+}
+
+function lineDrawActive(e) {
+    //take snapshot of current canvas
+    imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+    changeCanvasFunction("line");
+    canvas.style.cursor = "default";
+    //menuItemActive(e);
+    activeShapeDiv.children[0].classList.remove(activeShape);
+    activeShape = "gg-border-style-solid";
+    activeShapeDiv.children[0].classList.add(activeShape);
+    for(let element of menuShapeList) {
+        element.remove();
+    }
+    menuShapeList = [];
+    activeShapeDiv.addEventListener("click", lineDraw, false);
+}
+
+function rectangleDrawActive(e) {
+    imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+    changeCanvasFunction("rect");
+    canvas.style.cursor = "default";
+    //menuItemActive(e);
+    activeShapeDiv.children[0].classList.remove(activeShape);;
+    activeShape = "gg-shape-square";
+    activeShapeDiv.children[0].classList.add(activeShape);
+    for(let element of menuShapeList) {
+        element.remove();
+    }
+    menuShapeList = [];
+    activeShapeDiv.addEventListener("click", rectangleDraw, false);
+}
+
+function circleDrawActive(e) {
+    imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+    changeCanvasFunction("circle");
+    canvas.style.cursor = "default";
+    //menuItemActive(e);
+    activeShapeDiv.children[0].classList.remove(activeShape);
+    activeShape = "gg-shape-circle";
+    activeShapeDiv.children[0].classList.add(activeShape);
+    for(let element of menuShapeList) {
+        element.remove();
+    }
+    menuShapeList = [];
+    activeShapeDiv.addEventListener("click", circleDraw, false);
+}
 
 populateDrawBar2();
