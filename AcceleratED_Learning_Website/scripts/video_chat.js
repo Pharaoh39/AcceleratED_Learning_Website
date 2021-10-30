@@ -137,7 +137,6 @@ function line(e) {
         ctx.moveTo(lastPoint.x, lastPoint.y);
         if(e.ctrlKey) {
             let altitude = angle(lastPoint.x, lastPoint.y, e.offsetX, e.offsetY);
-            console.log(Math.abs(altitude) - 180);
             if(Math.abs(altitude) < snapAngle || Math.abs((Math.abs(altitude) - 180)) < snapAngle) {
                 ctx.lineTo(e.offsetX, lastPoint.y);
             } else
