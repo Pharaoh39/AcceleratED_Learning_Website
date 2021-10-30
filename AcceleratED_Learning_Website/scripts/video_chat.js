@@ -167,7 +167,7 @@ function rectangle(e) {
         offsetX = e.offsetX-lastPoint.x
         offsetY = e.offsetY-lastPoint.y;
         if(e.ctrlKey) {
-            offsetX >= offsetY ? offsetY = offsetX : offsetX = offsetY;
+            offsetX <= offsetY ? offsetY = offsetX : offsetX = offsetY;
         }
         ctx.beginPath();
         ctx.rect(lastPoint.x, lastPoint.y, offsetX, offsetY);
@@ -204,7 +204,7 @@ function circle(e) {
         radiusX = Math.abs(lastPoint.x - e.offsetX);
         radiusY = Math.abs(lastPoint.y - e.offsetY);
         if(e.ctrlKey) {
-            radiusX >= radiusY ? radiusY = radiusX : radiusX = radiusY;
+            radiusX <= radiusY ? radiusY = radiusX : radiusX = radiusY;
         }
         ctx.ellipse(lastPoint.x, lastPoint.y, radiusX, radiusY, 0, 0, 2*Math.PI);
         ctx.strokeStyle = activeColor;
@@ -549,11 +549,28 @@ function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
                 offset.y = (origin.y - e.offsetY) + offset.y;
                 origin.x = e.offsetX;
                 origin.y = e.offsetY;
+                if(e.ctrlKey) {
+                    if(offset.y < offset.x) {
+                        origin.x = (origin.x + offset.x) - offset.y;
+                        offset.x = offset.y;
+                    } else {
+                        origin.y = (origin.y + offset.y) - offset.x;
+                        offset.y = offset.x;
+                    }
+                }
                 break;
             case "top-right":
                 offset.x = Math.abs(origin.x - e.offsetX);
                 offset.y = (origin.y - e.offsetY) + offset.y;
                 origin.y = e.offsetY;
+                if(e.ctrlKey) {
+                    if(offset.y < offset.x) {
+                        offset.x = offset.y;
+                    } else {
+                        origin.y = (origin.y + offset.y) - offset.x;
+                        offset.y = offset.x;
+                    }
+                }
                 break;
             case "top-center":
                 offset.y = (origin.y - e.offsetY) + offset.y;
@@ -563,10 +580,19 @@ function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
                 offset.y = Math.abs(origin.y - e.offsetY);
                 offset.x = (origin.x - e.offsetX) + offset.x;
                 origin.x = e.offsetX;
+                if(e.ctrlKey) {
+                    if(offset.y < offset.x) {
+                        origin.x = (origin.x + offset.x) - offset.y;
+                        offset.x = offset.y;
+                    } else {
+                        offset.y = offset.x;
+                    }
+                }
                 break;
             case "btm-right":
                 offset.x = Math.abs(origin.x - e.offsetX);
                 offset.y = Math.abs(origin.y - e.offsetY);
+                if(e.ctrlKey) offset.x <= offset.y ? offset.y = offset.x : offset.x = offset.y;
                 break;
             case "btm-center":
                 offset.y = Math.abs(origin.y - e.offsetY);
