@@ -124,7 +124,9 @@ function move(e) {
 }
 
 function line(e) {
+
     ctx.putImageData(imageData, 0, 0);
+    let snapAngle = 10;
 
     if(e.buttons) {
         if(!lastPoint) {
@@ -133,14 +135,26 @@ function line(e) {
         }
         ctx.beginPath();
         ctx.moveTo(lastPoint.x, lastPoint.y);
-        ctx.lineTo(e.offsetX, e.offsetY);
+        if(e.ctrlKey) {
+            let altitude = angle(lastPoint.x, lastPoint.y, e.offsetX, e.offsetY);
+            console.log(Math.abs(altitude) - 180);
+            if(Math.abs(altitude) < snapAngle || Math.abs((Math.abs(altitude) - 180)) < snapAngle) {
+                ctx.lineTo(e.offsetX, lastPoint.y);
+            } else
+            if(Math.abs(Math.abs(altitude) - 90) < snapAngle) {
+                ctx.lineTo(lastPoint.x, e.offsetY);
+            } else {
+                ctx.lineTo(e.offsetX, e.offsetY);
+            }
+        } else {
+            ctx.lineTo(e.offsetX, e.offsetY);
+        }
         ctx.strokeStyle = activeColor;
         ctx.lineWidth = penSize;
         ctx.lineCap = "round";
         ctx.stroke();
     } else {
         if(lastPoint != null) {
-            //console.log(lastPoint);
             currentLine = {type: "line", color: activeColor, lineWidth: penSize, points: []};
             currentLine.points.push(lastPoint);
             currentLine.points.push({x: e.offsetX, y: e.offsetY});
@@ -152,8 +166,17 @@ function line(e) {
         imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
         lastPoint = null;
     }
-
 }
+
+// https://stackoverflow.com/questions/9614109/how-to-calculate-an-angle-from-points
+function angle(cx, cy, ex, ey) {
+    var dy = ey - cy;
+    var dx = ex - cx;
+    var theta = Math.atan2(dy, dx); // range (-PI, PI]
+    theta *= 180 / Math.PI; // rads to degs, range (-180, 180]
+    //if (theta < 0) theta = 360 + theta; // range [0, 360)
+    return theta;
+  }
 
 
 function rectangle(e) {
