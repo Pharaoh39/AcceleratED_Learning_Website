@@ -211,6 +211,10 @@ video {
     place-self: center;
     text-align: center;
 }
+.centerCheckbox {
+    place-self: center;
+    /*text-align: center;*/
+}
 
 .canvasBtn {
     place-self: stretch;

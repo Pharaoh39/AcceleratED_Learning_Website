@@ -172,14 +172,16 @@ function rectangle(e) {
         ctx.beginPath();
         ctx.rect(lastPoint.x, lastPoint.y, offsetX, offsetY);
         ctx.strokeStyle = activeColor;
-        ctx.fillStyle = activeSecondaryColor;
+        if(fillShapes) {
+            ctx.fillStyle = activeSecondaryColor;
+            ctx.fill();
+        }
         ctx.lineWidth = penSize;
         ctx.lineCap = "round";
-        ctx.fill();
         ctx.stroke();
     } else {
         if(lastPoint != null) {
-            currentLine = {type: "rect", color: activeColor, lineWidth: penSize, points: []};
+            currentLine = {type: "rect", color: activeColor, fill: fillShapes, lineWidth: penSize, points: []};
             currentLine.points.push(lastPoint);
             currentLine.points.push({x: e.offsetX-lastPoint.x, y: e.offsetY-lastPoint.y});
             drawings.push(currentLine);
@@ -208,15 +210,17 @@ function circle(e) {
         }
         ctx.ellipse(lastPoint.x, lastPoint.y, radiusX, radiusY, 0, 0, 2*Math.PI);
         ctx.strokeStyle = activeColor;
-        ctx.fillStyle = activeSecondaryColor;
         ctx.lineWidth = penSize;
-        ctx.fill();
+        if(fillShapes) {
+            ctx.fillStyle = activeSecondaryColor;
+            ctx.fill();
+        }
         ctx.stroke();
     } else {
         if(lastPoint != null) {
             let radiusX = Math.abs(lastPoint.x - e.offsetX);
             let radiusY = Math.abs(lastPoint.y - e.offsetY);
-            currentLine = {type: "circle", color: activeColor, lineWidth: penSize, points: []};
+            currentLine = {type: "circle", color: activeColor, fill: fillShapes, lineWidth: penSize, points: []};
             currentLine.points.push(lastPoint);
             currentLine.points.push({x: radiusX, y: radiusY});
             drawings.push(currentLine);
@@ -837,13 +841,15 @@ function redrawRect(drawing) {
     ctx.rect(drawing.points[0].x, drawing.points[0].y, drawing.points[1].x, drawing.points[1].y);
     ctx.strokeStyle = drawing.color;
     // HACK: bad workaround
-    try {
-        ctx.fillStyle = secondaryColors[drawColors.indexOf(rgb2hex(drawing.color))];
-    } catch {
-        ctx.fillStyle = secondaryColors[drawColors.indexOf(drawing.color)];
+    if(drawing.fill) {
+        try {
+            ctx.fillStyle = secondaryColors[drawColors.indexOf(rgb2hex(drawing.color))];
+        } catch {
+            ctx.fillStyle = secondaryColors[drawColors.indexOf(drawing.color)];
+        }
+        ctx.fill();
     }
     ctx.lineWidth = drawing.lineWidth;
-    ctx.fill();
     ctx.stroke();
 }
 
@@ -854,14 +860,16 @@ function redrawCircle(drawing) {
     let radiusY = drawing.points[1].y;
     ctx.ellipse(drawing.points[0].x, drawing.points[0].y, radiusX, radiusY, 0, 0, 2*Math.PI);
     ctx.strokeStyle = drawing.color;
-    // HACK: bad workaround
-    try {
-        ctx.fillStyle = secondaryColors[drawColors.indexOf(rgb2hex(drawing.color))];
-    } catch {
-        ctx.fillStyle = secondaryColors[drawColors.indexOf(drawing.color)];
+    if(drawing.fill) {
+        // HACK: bad workaround
+        try {
+            ctx.fillStyle = secondaryColors[drawColors.indexOf(rgb2hex(drawing.color))];
+        } catch {
+            ctx.fillStyle = secondaryColors[drawColors.indexOf(drawing.color)];
+        }
+        ctx.fill();
     }
     ctx.lineWidth = drawing.lineWidth;
-    ctx.fill();
     ctx.stroke();
 }
 
@@ -1240,6 +1248,7 @@ let shapesList = ["gg-border-style-solid","gg-shape-square","gg-shape-circle",];
 let menuShapeList = [];
 let activeShapeDiv = null;
 let activeShape = null;
+let fillShapes = true;
 function shapesDropdown(e) {
     let menuBtn, shapeChoice;
     let btn = e.currentTarget;
@@ -1274,12 +1283,37 @@ function shapesDropdown(e) {
                 counter++;
             }
         }
+        // fill shape option button
+        menuBtn = document.createElement("div");
+        menuBtn.classList.add("canvasBtnAbs");
+        menuBtn.style.height = info.height + "px";
+        menuBtn.style.width = info.width + "px";
+        menuBtn.style.top = (info.top - info.height*(counter+1)) + "px";
+        menuBtn.style.left = info.left + "px";
+        let div = document.createElement("div");
+        let text = document.createElement("label");
+        text.textContent = "Fill";
+        text.style.fontSize = "18px";
+        shapeChoice = document.createElement("INPUT");
+        shapeChoice.setAttribute("type", "checkbox");
+        shapeChoice.checked = fillShapes;
+        div.appendChild(shapeChoice);
+        div.appendChild(text);
+        menuBtn.appendChild(div);
+        menuShapeList.push(menuBtn);
+        document.getElementById("drawBar").appendChild(menuBtn);
+        shapeChoice.addEventListener("change", setFillStatus, false);
     } else {
         for(let element of menuShapeList) {
             element.remove();
         }
         menuShapeList = [];
     }
+}
+
+function setFillStatus(e) {
+    fillShapes = e.currentTarget.checked;
+    console.log(fillShapes);
 }
 
 function lineDrawActive(e) {
