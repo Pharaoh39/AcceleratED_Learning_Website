@@ -124,7 +124,9 @@ function move(e) {
 }
 
 function line(e) {
+
     ctx.putImageData(imageData, 0, 0);
+    let snapAngle = 10;
 
     if(e.buttons) {
         if(!lastPoint) {
@@ -133,14 +135,25 @@ function line(e) {
         }
         ctx.beginPath();
         ctx.moveTo(lastPoint.x, lastPoint.y);
-        ctx.lineTo(e.offsetX, e.offsetY);
+        if(e.ctrlKey) {
+            let altitude = angle(lastPoint.x, lastPoint.y, e.offsetX, e.offsetY);
+            if(Math.abs(altitude) < snapAngle || Math.abs((Math.abs(altitude) - 180)) < snapAngle) {
+                ctx.lineTo(e.offsetX, lastPoint.y);
+            } else
+            if(Math.abs(Math.abs(altitude) - 90) < snapAngle) {
+                ctx.lineTo(lastPoint.x, e.offsetY);
+            } else {
+                ctx.lineTo(e.offsetX, e.offsetY);
+            }
+        } else {
+            ctx.lineTo(e.offsetX, e.offsetY);
+        }
         ctx.strokeStyle = activeColor;
         ctx.lineWidth = penSize;
         ctx.lineCap = "round";
         ctx.stroke();
     } else {
         if(lastPoint != null) {
-            //console.log(lastPoint);
             currentLine = {type: "line", color: activeColor, lineWidth: penSize, points: []};
             currentLine.points.push(lastPoint);
             currentLine.points.push({x: e.offsetX, y: e.offsetY});
@@ -152,8 +165,17 @@ function line(e) {
         imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
         lastPoint = null;
     }
-
 }
+
+// https://stackoverflow.com/questions/9614109/how-to-calculate-an-angle-from-points
+function angle(cx, cy, ex, ey) {
+    var dy = ey - cy;
+    var dx = ex - cx;
+    var theta = Math.atan2(dy, dx); // range (-PI, PI]
+    theta *= 180 / Math.PI; // rads to degs, range (-180, 180]
+    //if (theta < 0) theta = 360 + theta; // range [0, 360)
+    return theta;
+  }
 
 
 function rectangle(e) {
@@ -167,19 +189,21 @@ function rectangle(e) {
         offsetX = e.offsetX-lastPoint.x
         offsetY = e.offsetY-lastPoint.y;
         if(e.ctrlKey) {
-            offsetX >= offsetY ? offsetY = offsetX : offsetX = offsetY;
+            offsetX <= offsetY ? offsetY = offsetX : offsetX = offsetY;
         }
         ctx.beginPath();
         ctx.rect(lastPoint.x, lastPoint.y, offsetX, offsetY);
         ctx.strokeStyle = activeColor;
-        ctx.fillStyle = activeSecondaryColor;
+        if(fillShapes) {
+            ctx.fillStyle = activeSecondaryColor;
+            ctx.fill();
+        }
         ctx.lineWidth = penSize;
         ctx.lineCap = "round";
-        ctx.fill();
         ctx.stroke();
     } else {
         if(lastPoint != null) {
-            currentLine = {type: "rect", color: activeColor, lineWidth: penSize, points: []};
+            currentLine = {type: "rect", color: activeColor, fill: fillShapes, lineWidth: penSize, points: []};
             currentLine.points.push(lastPoint);
             currentLine.points.push({x: e.offsetX-lastPoint.x, y: e.offsetY-lastPoint.y});
             drawings.push(currentLine);
@@ -204,19 +228,21 @@ function circle(e) {
         radiusX = Math.abs(lastPoint.x - e.offsetX);
         radiusY = Math.abs(lastPoint.y - e.offsetY);
         if(e.ctrlKey) {
-            radiusX >= radiusY ? radiusY = radiusX : radiusX = radiusY;
+            radiusX <= radiusY ? radiusY = radiusX : radiusX = radiusY;
         }
         ctx.ellipse(lastPoint.x, lastPoint.y, radiusX, radiusY, 0, 0, 2*Math.PI);
         ctx.strokeStyle = activeColor;
-        ctx.fillStyle = activeSecondaryColor;
         ctx.lineWidth = penSize;
-        ctx.fill();
+        if(fillShapes) {
+            ctx.fillStyle = activeSecondaryColor;
+            ctx.fill();
+        }
         ctx.stroke();
     } else {
         if(lastPoint != null) {
             let radiusX = Math.abs(lastPoint.x - e.offsetX);
             let radiusY = Math.abs(lastPoint.y - e.offsetY);
-            currentLine = {type: "circle", color: activeColor, lineWidth: penSize, points: []};
+            currentLine = {type: "circle", color: activeColor, fill: fillShapes, lineWidth: penSize, points: []};
             currentLine.points.push(lastPoint);
             currentLine.points.push({x: radiusX, y: radiusY});
             drawings.push(currentLine);
@@ -349,43 +375,66 @@ function hasClickedShape(e) {
     if(e.buttons) {
         for(var i = drawings.length - 1; i >= 0; i--) {
             let object = drawings[i];
-            if(object.type == "rect") {
-                // check within x bounds of the rectangle
-                if(object.points[1].x > 0) {
-                    if(object.points[0].x > e.offsetX || (object.points[0].x + object.points[1].x) < e.offsetX) continue;
-                } else {
-                    if(object.points[0].x < e.offsetX || (object.points[0].x + object.points[1].x) > e.offsetX) continue;
-                }
-                // check within y bounds of the rectangle
-                if(object.points[1].y > 0) {
-                    if(object.points[0].y > e.offsetY || (object.points[0].y + object.points[1].y) < e.offsetY) continue;
-                } else {
-                    if(object.points[0].y < e.offsetY || (object.points[0].y + object.points[1].y) > e.offsetY) continue;
-                }
+            if(object.type == "rect" && withinRectangleBounds(e, object)) {
                 selectObjectLayer = i;
                 return object;
             } else
-            if(object.type == "circle") {
-                let mult = Math.pow(object.points[1].x, 2)*Math.pow(object.points[1].y, 2);
-                let ellipseCalculation = Math.pow(object.points[1].y, 2)*Math.pow(e.offsetX - object.points[0].x, 2) + Math.pow(object.points[1].x, 2)*Math.pow(e.offsetY - object.points[0].y, 2);
-                if(ellipseCalculation <= mult) {
-                    selectObjectLayer = i;
-                    return object;
-                }
+            if(object.type == "circle" && withinEllipseBounds(e, object)) {
+                selectObjectLayer = i;
+                return object;
             } else
-            if(object.type == "line") {
-                continue;
+            if(object.type == "line" && withinLineBounds(e, object)) {
+                selectObjectLayer = i;
+                return object;
             }
         }
         //if(!inMotion && !inMotionResize) return null;
     }
 }
 
+// Takes the mouse position event and a rectangle object and outputs true if the mouse position is within the ellipse bounds
+function withinRectangleBounds({offsetX, offsetY}, {points}) {
+    // check within x bounds of the rectangle
+    if(points[1].x > 0) {
+        if(points[0].x > offsetX || (points[0].x + points[1].x) < offsetX) return false;
+    } else {
+        if(points[0].x < offsetX || (points[0].x + points[1].x) > offsetX) return false;
+    }
+    // check within y bounds of the rectangle
+    if(points[1].y > 0) {
+        if(points[0].y > offsetY || (points[0].y + points[1].y) < offsetY) return false;
+    } else {
+        if(points[0].y < offsetY || (points[0].y + points[1].y) > offsetY) return false;
+    }
+    return true;
+}
 
-// Draws the resize points on the corners of the rectangle
+// Takes the mouse position event and an ellipse object and outputs true if the mouse position is within the ellipse bounds
+function withinEllipseBounds({offsetX, offsetY}, {points}) {
+    let multiplier = Math.pow(points[1].x, 2) * Math.pow(points[1].y, 2);
+    let ellipleCalculation = Math.pow(points[1].y, 2) * Math.pow(offsetX - points[0].x, 2) + Math.pow(points[1].x, 2) * Math.pow(offsetY - points[0].y, 2);
+    return ellipleCalculation <= multiplier ? true : false;
+}
+
+// Takes the mouse position event and an line object and outputs true if the mouse position is within the line bounds
+function withinLineBounds({offsetX, offsetY}, {points}) {
+    // calculates distance from line
+    let tolerance = penSize + 2;
+    let distanceFromLine = Math.abs((offsetY - points[1].y)*points[0].x - (offsetX - points[1].x)*points[0].y + offsetX*points[1].y - offsetY*points[1].x) / Math.sqrt(Math.pow((offsetY - points[1].y), 2) + Math.pow((offsetX - points[1].x), 2));
+    if(distanceFromLine > tolerance) return false;
+    // calculates if between the two points
+    let dotProduct = (offsetX - points[0].x) * (points[1].x - points[0].x) + (offsetY - points[0].y) * (points[1].y - points[0].y);
+    if(dotProduct < 0) return false;
+    let squaredLengthBA = (points[1].x - points[0].x) * (points[1].x - points[0].x) + (points[1].y - points[0].y) * (points[1].y - points[0].y);
+    if(dotProduct > squaredLengthBA) return false;
+    return true;
+}
+
+
+// Draws the resize nodes on the corners of the rectangle
 function drawEditSelectors(selectedObject) {
     
-    let origin, offset;
+    let origin, offset, editPoints;
 
     if(selectedObject.type == "circle") {
         origin = {x: selectedObject.points[0].x-selectedObject.points[1].x, y: selectedObject.points[0].y-selectedObject.points[1].y};
@@ -393,20 +442,31 @@ function drawEditSelectors(selectedObject) {
     } else if(selectedObject.type == "rect") {
         origin = {x: selectedObject.points[0].x, y: selectedObject.points[0].y};
         offset = {x: selectedObject.points[1].x, y: selectedObject.points[1].y};
+    } else if(selectObject.type == "line") {
+        origin = {x: selectedObject.points[0].x, y: selectedObject.points[0].y};
+        offset = {x: selectedObject.points[1].x-selectedObject.points[0].x, y: selectedObject.points[1].y-selectedObject.points[0].y};
     }
 
     let selectorRadius = 5;
     let borderRadius = selectedObject.lineWidth;
-    let editPoints = [
-        {x: origin.x, y: origin.y},
-        {x: origin.x+offset.x, y: origin.y},
-        {x: origin.x+offset.x/2, y: origin.y},
-        {x: origin.x, y: origin.y+offset.y},
-        {x: origin.x+offset.x, y: origin.y+offset.y},
-        {x: origin.x+offset.x/2, y: origin.y+offset.y},
-        {x: origin.x, y: origin.y+offset.y/2},
-        {x: origin.x+offset.x, y: origin.y+offset.y/2},
-    ];
+    if(selectObject.type == "line") {
+        editPoints = [
+            {x: origin.x, y: origin.y},
+            {x: origin.x+offset.x, y: origin.y+offset.y},
+        ];
+    } else {
+        editPoints = [
+            {x: origin.x, y: origin.y},
+            {x: origin.x+offset.x, y: origin.y},
+            {x: origin.x+offset.x/2, y: origin.y},
+            {x: origin.x, y: origin.y+offset.y},
+            {x: origin.x+offset.x, y: origin.y+offset.y},
+            {x: origin.x+offset.x/2, y: origin.y+offset.y},
+            {x: origin.x, y: origin.y+offset.y/2},
+            {x: origin.x+offset.x, y: origin.y+offset.y/2},
+        ];
+    }
+    
 
     ctx.strokeStyle = "black";
     ctx.fillStyle = "grey";
@@ -429,7 +489,7 @@ function drawEditSelectors(selectedObject) {
 // Changes the cursor icon depending on where on the rectangle the user hovers
 function changeIcon(e, selectedObject) {
     
-    let origin, offset;
+    let origin, offset, editPoints;
 
     if(selectedObject.type == "circle") {
         origin = {x: selectedObject.points[0].x-selectedObject.points[1].x, y: selectedObject.points[0].y-selectedObject.points[1].y};
@@ -437,19 +497,30 @@ function changeIcon(e, selectedObject) {
     } else if(selectedObject.type == "rect") {
         origin = {x: selectedObject.points[0].x, y: selectedObject.points[0].y};
         offset = {x: selectedObject.points[1].x, y: selectedObject.points[1].y};
+    } else if(selectObject.type == "line") {
+        origin = {x: selectedObject.points[0].x, y: selectedObject.points[0].y};
+        offset = {x: Math.abs(selectedObject.points[1].x-selectedObject.points[0].x), y: Math.abs(selectedObject.points[1].y-selectedObject.points[0].y)};
     }
 
     let selectBound = 8;
-    let editPoints = [
-        {name: "top-left", cursor: "nwse-resize", x: origin.x, y: origin.y},
-        {name: "top-right", cursor: "nesw-resize", x: origin.x+offset.x, y: origin.y},
-        {name: "top-center", cursor: "ns-resize", x: origin.x+offset.x/2, y: origin.y},
-        {name: "btm-left", cursor: "nesw-resize", x: origin.x, y: origin.y+offset.y},
-        {name: "btm-right", cursor: "nwse-resize", x: origin.x+offset.x, y: origin.y+offset.y},
-        {name: "btm-center", cursor: "ns-resize", x: origin.x+offset.x/2, y: origin.y+offset.y},
-        {name: "left-center", cursor: "ew-resize", x: origin.x, y: origin.y+offset.y/2},
-        {name: "right-center", cursor: "ew-resize", x: origin.x+offset.x, y: origin.y+offset.y/2},
-    ];
+    if(selectedObject.type == "line") {
+        editPoints = [
+            {name: "top-left", cursor: "nwse-resize", x: origin.x, y: origin.y},
+            {name: "btm-right", cursor: "nwse-resize", x: origin.x+offset.x, y: origin.y+offset.y},
+        ];
+    } else {
+        editPoints = [
+            {name: "top-left", cursor: "nwse-resize", x: origin.x, y: origin.y},
+            {name: "top-right", cursor: "nesw-resize", x: origin.x+offset.x, y: origin.y},
+            {name: "top-center", cursor: "ns-resize", x: origin.x+offset.x/2, y: origin.y},
+            {name: "btm-left", cursor: "nesw-resize", x: origin.x, y: origin.y+offset.y},
+            {name: "btm-right", cursor: "nwse-resize", x: origin.x+offset.x, y: origin.y+offset.y},
+            {name: "btm-center", cursor: "ns-resize", x: origin.x+offset.x/2, y: origin.y+offset.y},
+            {name: "left-center", cursor: "ew-resize", x: origin.x, y: origin.y+offset.y/2},
+            {name: "right-center", cursor: "ew-resize", x: origin.x+offset.x, y: origin.y+offset.y/2},
+        ];
+    }
+
 
     for(let node of editPoints) {
         let distanceFromNode = Math.ceil(Math.sqrt(Math.pow(e.offsetX-node.x, 2) + Math.pow(e.offsetY-node.y, 2)));
@@ -481,12 +552,16 @@ function changeIcon(e, selectedObject) {
 
 
 // Resizes the rectangle from one of the control points
+// TODO: should only enter this function if you have button down!
 var ctrlPointInUse = null;
 var inMotionResize = false;
 function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
 
     if(selectedObject.type == "circle") {
         resizeCircleFromPoint(e, ctrlPoint, selectedObject);
+        return;
+    } else if(selectedObject.type == "line") {
+        resizeLineFromPoint(e, ctrlPoint, selectedObject);
         return;
     }
 
@@ -500,11 +575,28 @@ function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
                 offset.y = (origin.y - e.offsetY) + offset.y;
                 origin.x = e.offsetX;
                 origin.y = e.offsetY;
+                if(e.ctrlKey) {
+                    if(offset.y < offset.x) {
+                        origin.x = (origin.x + offset.x) - offset.y;
+                        offset.x = offset.y;
+                    } else {
+                        origin.y = (origin.y + offset.y) - offset.x;
+                        offset.y = offset.x;
+                    }
+                }
                 break;
             case "top-right":
                 offset.x = Math.abs(origin.x - e.offsetX);
                 offset.y = (origin.y - e.offsetY) + offset.y;
                 origin.y = e.offsetY;
+                if(e.ctrlKey) {
+                    if(offset.y < offset.x) {
+                        offset.x = offset.y;
+                    } else {
+                        origin.y = (origin.y + offset.y) - offset.x;
+                        offset.y = offset.x;
+                    }
+                }
                 break;
             case "top-center":
                 offset.y = (origin.y - e.offsetY) + offset.y;
@@ -514,10 +606,19 @@ function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
                 offset.y = Math.abs(origin.y - e.offsetY);
                 offset.x = (origin.x - e.offsetX) + offset.x;
                 origin.x = e.offsetX;
+                if(e.ctrlKey) {
+                    if(offset.y < offset.x) {
+                        origin.x = (origin.x + offset.x) - offset.y;
+                        offset.x = offset.y;
+                    } else {
+                        offset.y = offset.x;
+                    }
+                }
                 break;
             case "btm-right":
                 offset.x = Math.abs(origin.x - e.offsetX);
                 offset.y = Math.abs(origin.y - e.offsetY);
+                if(e.ctrlKey) offset.x <= offset.y ? offset.y = offset.x : offset.x = offset.y;
                 break;
             case "btm-center":
                 offset.y = Math.abs(origin.y - e.offsetY);
@@ -553,6 +654,9 @@ function resizeCircleFromPoint(e, ctrlPoint, selectedObject) {
             case "btm-right":
                 offset.x = Math.abs(origin.x - e.offsetX);
                 offset.y = Math.abs(origin.y - e.offsetY);
+                if(e.ctrlKey) {
+                    offset.x <= offset.y ? offset.y = offset.x : offset.x = offset.y;
+                }
                 break;
             case "top-center":
             case "btm-center":
@@ -561,6 +665,31 @@ function resizeCircleFromPoint(e, ctrlPoint, selectedObject) {
             case "left-center":
             case "right-center":
                 offset.x = Math.abs(origin.x - e.offsetX);
+                break;
+        }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        redrawCanvas(drawings);
+        fillTextBoxes(textBoxes);
+        drawEditSelectors(selectedObject);
+    } else {
+        inMotionResize = false;
+    }
+}
+
+function resizeLineFromPoint(e, ctrlPoint, selectedObject) {
+
+    let [origin, offset] = selectedObject.points;
+
+    if(e.buttons) {
+        if(!inMotionResize) inMotionResize = true;
+        switch(ctrlPoint) {
+            case "top-left":
+                origin.x = e.offsetX;
+                origin.y = e.offsetY;
+                break;
+            case "btm-right":
+                offset.x = e.offsetX;
+                offset.y = e.offsetY;
                 break;
         }
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -584,8 +713,14 @@ function moveShapeToCursor(e, selectedObject) {
             inMotion = true;
             return;
         }
+        let offsetX = selectedObject.points[1].x-selectedObject.points[0].x;
+        let offsetY = selectedObject.points[1].y-selectedObject.points[0].y;
         selectedObject.points[0].x = e.offsetX - cursorOffsetFromOrigin.x;
         selectedObject.points[0].y = e.offsetY - cursorOffsetFromOrigin.y;
+        if(selectedObject.type == "line") {
+            selectedObject.points[1].x = selectedObject.points[0].x + offsetX;
+            selectedObject.points[1].y = selectedObject.points[0].y + offsetY;
+        }
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
         fillTextBoxes(textBoxes);
@@ -607,7 +742,7 @@ function moveShape2(e) {
         prevObjectLayer = selectObjectLayer;
         selectObject = selectedObject;
     }
-    changeIcon(e, selectObject);
+    if(selectObject != null) changeIcon(e, selectObject);
 }
 
 
@@ -728,13 +863,15 @@ function redrawRect(drawing) {
     ctx.rect(drawing.points[0].x, drawing.points[0].y, drawing.points[1].x, drawing.points[1].y);
     ctx.strokeStyle = drawing.color;
     // HACK: bad workaround
-    try {
-        ctx.fillStyle = secondaryColors[drawColors.indexOf(rgb2hex(drawing.color))];
-    } catch {
-        ctx.fillStyle = secondaryColors[drawColors.indexOf(drawing.color)];
+    if(drawing.fill) {
+        try {
+            ctx.fillStyle = secondaryColors[drawColors.indexOf(rgb2hex(drawing.color))];
+        } catch {
+            ctx.fillStyle = secondaryColors[drawColors.indexOf(drawing.color)];
+        }
+        ctx.fill();
     }
     ctx.lineWidth = drawing.lineWidth;
-    ctx.fill();
     ctx.stroke();
 }
 
@@ -745,14 +882,16 @@ function redrawCircle(drawing) {
     let radiusY = drawing.points[1].y;
     ctx.ellipse(drawing.points[0].x, drawing.points[0].y, radiusX, radiusY, 0, 0, 2*Math.PI);
     ctx.strokeStyle = drawing.color;
-    // HACK: bad workaround
-    try {
-        ctx.fillStyle = secondaryColors[drawColors.indexOf(rgb2hex(drawing.color))];
-    } catch {
-        ctx.fillStyle = secondaryColors[drawColors.indexOf(drawing.color)];
+    if(drawing.fill) {
+        // HACK: bad workaround
+        try {
+            ctx.fillStyle = secondaryColors[drawColors.indexOf(rgb2hex(drawing.color))];
+        } catch {
+            ctx.fillStyle = secondaryColors[drawColors.indexOf(drawing.color)];
+        }
+        ctx.fill();
     }
     ctx.lineWidth = drawing.lineWidth;
-    ctx.fill();
     ctx.stroke();
 }
 
@@ -825,8 +964,8 @@ function populateDrawBar2() {
     let buttons = [
         "gg-pen",
         "gg-border-style-solid",
-        "gg-shape-square",
-        "gg-shape-circle",
+        /*"gg-shape-square",
+        "gg-shape-circle",*/
         "colorRect",
         "pointer",
         "gg-arrow-left",
@@ -884,7 +1023,7 @@ function populateDrawBar2() {
                 case "gg-pen":
                     menuBtn.addEventListener("click", enablePen, false);
                     break;
-                case "gg-shape-square":
+                /*case "gg-shape-square":
                     menuBtn.addEventListener("click", rectangleDraw, false);
                     break;
                 case "gg-shape-circle":
@@ -892,6 +1031,12 @@ function populateDrawBar2() {
                     break;
                 case "gg-border-style-solid":
                     menuBtn.addEventListener("click", lineDraw, false);
+                    break;*/
+                case "gg-border-style-solid":
+                    menuBtn.addEventListener("click", lineDraw/*shapesDropdown*/, false);
+                    menuBtn.addEventListener("dblclick", shapesDropdown, false);
+                    activeShape = buttonType;
+                    activeShapeDiv = menuBtn;
                     break;
                 case "colorRect":
                     activeColorDiv = menuBtn;
@@ -1119,5 +1264,124 @@ function increasePenSize(e) {
     document.getElementById("penSize").style.height = penSize + "px";
 }
 
+
+// TODO: do these event listeners have to be removed later?
+let shapesList = ["gg-border-style-solid","gg-shape-square","gg-shape-circle",];
+let menuShapeList = [];
+let activeShapeDiv = null;
+let activeShape = null;
+let fillShapes = true;
+function shapesDropdown(e) {
+    let menuBtn, shapeChoice;
+    let btn = e.currentTarget;
+    let counter = 0;
+    if(menuShapeList.length == 0) {
+        let info = btn.getBoundingClientRect();
+        for(let i = 1; i <= shapesList.length; i++) {
+            if(shapesList[i-1] != activeShape) {
+                menuBtn = document.createElement("div");
+                menuBtn.id = shapesList[i-1];
+                menuBtn.classList.add("canvasBtnAbs");
+                menuBtn.style.height = info.height + "px";
+                menuBtn.style.width = info.width + "px";
+                menuBtn.style.top = (info.top - info.height*(counter+1)) + "px";
+                menuBtn.style.left = info.left + "px";
+                shapeChoice = document.createElement("i");
+                shapeChoice.classList.add(shapesList[i-1], "center");
+                menuBtn.appendChild(shapeChoice);
+                menuShapeList.push(menuBtn);
+                document.getElementById("drawBar").appendChild(menuBtn);
+                switch(shapesList[i-1]) {
+                    case "gg-border-style-solid":
+                        menuBtn.addEventListener("click", lineDrawActive, false);
+                        break;
+                    case "gg-shape-square":
+                        menuBtn.addEventListener("click", rectangleDrawActive, false);
+                        break;
+                    case "gg-shape-circle":
+                        menuBtn.addEventListener("click", circleDrawActive, false);
+                        break;
+                }
+                counter++;
+            }
+        }
+        // fill shape option button
+        menuBtn = document.createElement("div");
+        menuBtn.classList.add("canvasBtnAbs");
+        menuBtn.style.height = info.height + "px";
+        menuBtn.style.width = info.width + "px";
+        menuBtn.style.top = (info.top - info.height*(counter+1)) + "px";
+        menuBtn.style.left = info.left + "px";
+        let div = document.createElement("div");
+        let text = document.createElement("label");
+        text.textContent = "Fill";
+        text.style.fontSize = "18px";
+        shapeChoice = document.createElement("INPUT");
+        shapeChoice.setAttribute("type", "checkbox");
+        shapeChoice.checked = fillShapes;
+        div.appendChild(shapeChoice);
+        div.appendChild(text);
+        menuBtn.appendChild(div);
+        menuShapeList.push(menuBtn);
+        document.getElementById("drawBar").appendChild(menuBtn);
+        shapeChoice.addEventListener("change", setFillStatus, false);
+    } else {
+        for(let element of menuShapeList) {
+            element.remove();
+        }
+        menuShapeList = [];
+    }
+}
+
+function setFillStatus(e) {
+    fillShapes = e.currentTarget.checked;
+    console.log(fillShapes);
+}
+
+function lineDrawActive(e) {
+    //take snapshot of current canvas
+    imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+    changeCanvasFunction("line");
+    canvas.style.cursor = "default";
+    //menuItemActive(e);
+    activeShapeDiv.children[0].classList.remove(activeShape);
+    activeShape = "gg-border-style-solid";
+    activeShapeDiv.children[0].classList.add(activeShape);
+    for(let element of menuShapeList) {
+        element.remove();
+    }
+    menuShapeList = [];
+    activeShapeDiv.addEventListener("click", lineDraw, false);
+}
+
+function rectangleDrawActive(e) {
+    imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+    changeCanvasFunction("rect");
+    canvas.style.cursor = "default";
+    //menuItemActive(e);
+    activeShapeDiv.children[0].classList.remove(activeShape);;
+    activeShape = "gg-shape-square";
+    activeShapeDiv.children[0].classList.add(activeShape);
+    for(let element of menuShapeList) {
+        element.remove();
+    }
+    menuShapeList = [];
+    activeShapeDiv.addEventListener("click", rectangleDraw, false);
+}
+
+function circleDrawActive(e) {
+    imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+    changeCanvasFunction("circle");
+    canvas.style.cursor = "default";
+    //menuItemActive(e);
+    activeShapeDiv.children[0].classList.remove(activeShape);
+    activeShape = "gg-shape-circle";
+    activeShapeDiv.children[0].classList.add(activeShape);
+    for(let element of menuShapeList) {
+        element.remove();
+    }
+    menuShapeList = [];
+    activeShapeDiv.addEventListener("click", circleDraw, false);
+}
 
 populateDrawBar2();
