@@ -142,6 +142,8 @@ var canvasFunction;
 changeCanvasFunction("pen");
 var penSize = 5;
 var textLastPoint;
+var mouseX;
+var mouseY;
 
 var pages = [];
 var currentPage = 1;
@@ -186,6 +188,8 @@ document.addEventListener('keydown', function(event) {
 
 // function to handle the different functions for the differen whiteboard tools that require a mouse position
 function move(e) {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
     if(e.target.id != "canvas") return;
     switch(canvasFunction) {
         case "pen":
@@ -210,10 +214,13 @@ function move(e) {
             erase(e);
         case "textBox":
             break;
-        case "overlay":
-            break;
         default:
             pen(e);
+    }
+}
+function click(e) {
+    if(canvasFunction == "move"){
+        hasClickedTextBox(e);
     }
 }
 
@@ -306,6 +313,7 @@ function circle(e) {
         ctx.lineWidth = penSize;
         ctx.fill();
         ctx.stroke();
+        ctx.fillStyle = '#000000';
     } else {
         if(lastPoint != null) {
             let radiusX = Math.abs(lastPoint.x - e.offsetX);
@@ -393,6 +401,7 @@ function erase(e) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     redrawCanvas(drawings);
     redrawLine(currentLine);
+    fillTextBoxes(textBoxes);
 
     if(e.buttons) {
         // if newline
@@ -695,6 +704,9 @@ var selectObjectLayer = null;
 var prevObjectLayer = null;
 var selectObject = null;
 function moveShape2(e) {
+    // if(hasClickedTextBox(e)){
+    //     return;
+    // }
     var newSelect = true;
     var selectedObject = hasClickedShape(e);
     if((selectObject == null || prevObjectLayer != selectObjectLayer) && !inMotion && !inMotionResize) {
@@ -755,6 +767,7 @@ function textBox() {
 
     //Start dragging sequence
     textBox.addEventListener('mousedown', function(e) {
+        //console.log(hasClickedTextBox());
         beingDragged = true;
         textLastPoint = {x: e.offsetX, y: e.offsetY};
     }, true);
@@ -779,6 +792,42 @@ function textBox() {
     textBoxes.push(textBox);
 }
 
+function hasClickedTextBox(e) {
+    console.log("inside");
+    for (let obj of textBoxes) {
+        let curDisplay = obj.style.display;
+        obj.style.display = "inline-block";
+        let bounds = obj.getBoundingClientRect();
+        obj.style.display = curDisplay;
+        console.log(bounds);
+        console.log(mouseX);
+        console.log(mouseY);
+        if(bounds.left <= mouseX && bounds.right >= mouseX &&
+            bounds.top <= mouseY && bounds.bottom >= mouseY){
+                //Hide other textboxes
+                for (let obj of textBoxes) {
+                    obj.style.display = "none";
+                }
+                obj.style.display = "inline-block";
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                redrawCanvas(drawings);
+                fillTextBoxes(textBoxes);
+                return true;
+            };
+    };
+    return false;
+};
+
+//Check if currently displaying a text box
+function showingTextBox(){
+    for (let obj of textBoxes) {
+        if(obj.style.display = 'inline-block'){
+            return true;
+        }
+    }
+    return false;
+}
+
 //Draw the contents of the textboxes onto the canvas
 function fillTextBoxes(curTextBoxes) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -786,14 +835,19 @@ function fillTextBoxes(curTextBoxes) {
     ctx.font="16px monospace";
     ctx.textBaseline = "top";
     for (let obj of curTextBoxes) {
+        if(obj.style.display == 'inline-block'){
+            continue;
+        }
         var lineHeight = parseInt(window.getComputedStyle(obj).getPropertyValue('line-height'));
         var borderWidth = parseInt(window.getComputedStyle(obj).getPropertyValue('border-width'));
         var lines = obj.value.split('\n');
         for (var i = 0; i<lines.length; i++) {
+            //var curFillStyle = ctx.fillStyle;
             //reset fillstyle
             ctx.fillStyle = '#000000';
             ctx.fillText(lines[i], parseInt(obj.style.left) - canvas.getBoundingClientRect().x + borderWidth, 
             parseInt(obj.style.top) - canvas.getBoundingClientRect().y + borderWidth + i*lineHeight);
+            //ctx.fillStyle = curFillStyle;
         }
     }
 }
@@ -805,15 +859,6 @@ function resizeBox() {
     var maxCols = Math.max(...lines.map(line => line.length));
     if (this.value.length > 3) {
         this.cols = maxCols;
-    }
-}
-
-//show all textboxes
-function overlay() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    redrawCanvas(drawings);
-    for (let obj of textBoxes) {
-        obj.style.display = "inline-block"
     }
 }
 
@@ -910,6 +955,7 @@ const rgb2hex = (rgb) => `#${rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/).slice
 // some more functions run on setup
 //populateDrawBar();
 window.onmousemove = move;
+window.onclick = click;
 window.onresize = resize;
 resize();
 
@@ -928,7 +974,6 @@ function populateDrawBar2() {
         "gg-arrow-right",
         "sizeDot",
         "text",
-        "overlay",
         "gg-controller",
         "gg-erase",
         "gg-trash"
@@ -944,24 +989,14 @@ function populateDrawBar2() {
             document.getElementById("drawBar").appendChild(menuBtn);
             menuBtn.id = "pageCount";
             continue;
-        } else 
-        if(buttonType == "text") {
+        }
+        else if(buttonType == "text") {
             menuBtn = document.createElement("div");
             menuBtn.classList.add("canvasBtn");
             btnContents = document.createElement("i");
             btnContents.classList.add("center");
             btnContents.textContent = "Tt";
             menuBtn.addEventListener("click", addTextBox, false);
-            menuBtn.appendChild(btnContents);
-            document.getElementById("drawBar").appendChild(menuBtn);
-            continue;
-        } if(buttonType == "overlay") {
-            menuBtn = document.createElement("div");
-            menuBtn.classList.add("canvasBtn");
-            btnContents = document.createElement("i");
-            btnContents.classList.add("center");
-            btnContents.textContent = "Ov";
-            menuBtn.addEventListener("click", showOverlay, false);
             menuBtn.appendChild(btnContents);
             document.getElementById("drawBar").appendChild(menuBtn);
             continue;
@@ -1027,12 +1062,12 @@ function menuItemActive(e) {
 
 //Check if need to draw textBoxes onto canvas
 function changeCanvasFunction(newFunc) {
-    if((canvasFunction == 'overlay' || canvasFunction == 'textBox') && newFunc != 'overlay'){
-        fillTextBoxes(textBoxes);
+    if(canvasFunction == 'textBox' || canvasFunction == "move"){
         for (const obj of textBoxes) {
             //Hide text boxes
             obj.style.display = "none";
         }
+        fillTextBoxes(textBoxes);
     }
     canvasFunction = newFunc;
 }
@@ -1044,6 +1079,7 @@ function enablePen(e) {
 }
 
 function pointerMenu(e) {
+    fillTextBoxes(textBoxes);
     changeCanvasFunction("pointer");
     //take snapshot of current canvas
     imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
@@ -1052,6 +1088,7 @@ function pointerMenu(e) {
 }
 
 function lineDraw(e) {
+    fillTextBoxes(textBoxes);
     //take snapshot of current canvas
     imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
     changeCanvasFunction("line");
@@ -1066,13 +1103,6 @@ function addTextBox(e) {
     textBox();
 }
 
-function showOverlay(e) {
-    changeCanvasFunction("overlay");
-    canvas.style.cursor = "default";
-    menuItemActive(e);
-    overlay();
-}
-
 //Using changeCanvasFunction in case of unfilled textbox
 function goToNextPage() {
     changeCanvasFunction("nextPage");
@@ -1085,6 +1115,10 @@ function goToPrevPage() {
 }
 
 function rectangleDraw(e) {
+    for (let obj of textBoxes) {
+        obj.style.display = "none";
+    }
+    fillTextBoxes(textBoxes);
     imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
     changeCanvasFunction("rect");
     canvas.style.cursor = "default";
@@ -1092,6 +1126,10 @@ function rectangleDraw(e) {
 }
 
 function circleDraw(e) {
+    for (let obj of textBoxes) {
+        obj.style.display = "none";
+    }
+    fillTextBoxes(textBoxes);
     imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
     changeCanvasFunction("circle");
     canvas.style.cursor = "default";
