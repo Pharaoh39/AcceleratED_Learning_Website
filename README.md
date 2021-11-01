@@ -18,6 +18,17 @@ a kid-friendly video teleconferencing platform that will be able to support stud
 
 The design mockup for the website is on Figma for now. The invite link is [here](https://www.figma.com/file/licWicz3p45o3ZzWaR2YVU/Education-Web-App?node-id=0%3A1).
 
+## Getting Started
+  - Install the following
+    - Node.js (https://nodejs.org/en/download/)
+    - Git (https://git-scm.com/downloads)
+  - Navigate into AcceleratED_Learning_Website in terminal (Make sure terminal is using git bash)
+  - Install Dependencies
+    - Enter 'npm install' into terminal
+  - Available Scripts
+    - 'npm run start' (starts local version of website on localhost:5000)
+    - 'npm run start:watch' (starts local website and automatically reruns when changes in files detected)
+
 ## Whiteboard
 Currently very buggy.
 Features include:
@@ -27,3 +38,13 @@ Features include:
 - Line tool
 - Pointer tool
 - Clear button
+
+## Files
+ - Server.js (Server-side related code)
+ - Procfile (Starts server on Heroku)
+ - Package.json (Contains description, dependencies, scripts for npm)
+ - .gitignore (folders and files not included in Git)
+ - Views Folder (Html for web pages)
+ - Styles Folder (Relevant CSS)
+ - video_chat.js (Implementation for website functionality)
+
