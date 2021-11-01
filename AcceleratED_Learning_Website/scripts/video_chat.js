@@ -61,10 +61,16 @@ var currentLine = {
 }
 var imageData;
 
-// resize the canvas based on the window size and center the whiteboard menu vertically in the canvas
+
+// resize the canvas based on the window size
+// enforces a 16:9 aspect ratio
+// TODO:
+//  - Set min height
 function resize() {
-    ctx.canvas.width = canvas.parentElement.clientWidth;
-    ctx.canvas.height = canvas.parentElement.clientHeight - 52;
+    let canvasHeight = canvas.parentElement.clientHeight;
+    canvas.height = canvasHeight;
+    canvas.width = Math.max(500, Math.floor(16/9 * canvasHeight));
+    console.log(canvasHeight);
     clearCanvas();
 }
 
@@ -78,7 +84,7 @@ function clearCanvas() {
     imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
 }
 
-// pressing ctrl+z will remove the last drawn element on the page
+// press ctrl+z to remove the last drawn element on the page
 document.addEventListener('keydown', function(event) {
     if (event.ctrlKey && event.key === 'z') {
       if(drawings.length > 0) {
