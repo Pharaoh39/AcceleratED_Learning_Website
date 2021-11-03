@@ -1075,6 +1075,7 @@ function changeActiveMenuItem(e) {
     activeMenuItem.classList.remove("canvasBtnActive");
     activeMenuItem = e.currentTarget;
     activeMenuItem.classList.add("canvasBtnActive");
+    closeAllOpenMenus();
 }
 
 
@@ -1126,12 +1127,14 @@ function showOverlay(e) {
 // Using changeCanvasFunction in case of unfilled textbox
 function goToNextPage() {
     changeCanvasFunction("nextPage");
+    closeAllOpenMenus();
     nextPage();
 }
 
 
 function goToPrevPage() {
     changeCanvasFunction("prevPage");
+    closeAllOpenMenus();
     prevPage();
 }
 
