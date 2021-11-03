@@ -93,6 +93,7 @@ document.addEventListener('keydown', function(event) {
 // function to handle the different functions for the differen whiteboard tools that require a mouse position
 function move(e) {
     if(e.target.id != "canvas") return;
+    if(e.buttons) closeAllOpenMenus();
     switch(canvasFunction) {
         case "pen":
             pen(e);
@@ -938,9 +939,14 @@ function prevPage() {
 
 
 
-/* ---------------------------------------------------- */
-/* ---------- Javascript for whiteboard menu ---------- */
-/* ---------------------------------------------------- */
+/* --------------------------------------------------- */
+/* ---------- Whiteboard Menu Functionality ---------- */
+/* --------------------------------------------------- */
+/* TODO
+**  Eraser indicator does not disappear when a different menu option is changed 
+**  Make sure event listeners for the popup menu are being eliminated
+**  don't have to delete and recreate it, just create it once and hide it!
+*/
 
 
 const drawColors = ["#4198e9", "#e94b41", "#e9b041", "#44e941", "#b341e9", "#000000"];
@@ -948,24 +954,28 @@ const secondaryColors = ["#a3c4e3", "#eba4a0", "#ebd3a4", "#a0ed9f", "#d2a0eb", 
 
 var activeColor = "#4198e9";
 var activeSecondaryColor = "#a3c4e3";
-var activeDot = null;
+var activeMenuItem = null;
+
+let colorChoiceDivArray = [];
+let activeColorDiv = null;
+
+var lineSizePopupElement = null;
+
+let shapesList = ["gg-border-style-solid","gg-shape-square","gg-shape-circle"];
+let shapeMenuDivArray = [];
+let activeShapeDiv = null;
+let activeShape = null;
+let fillShapes = true;
 
 const rgb2hex = (rgb) => `#${rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/).slice(1).map(n => parseInt(n, 10).toString(16).padStart(2, '0')).join('')}`;
 
-// some more functions run on setup
-//populateDrawBar();
-window.onmousemove = move;
-window.onresize = resize;
-resize();
 
-
-function populateDrawBar2() {
+function populateDrawBar() {
 
     let buttons = [
         "gg-pen",
+        "gg-erase",
         "gg-border-style-solid",
-        /*"gg-shape-square",
-        "gg-shape-circle",*/
         "colorRect",
         "pointer",
         "gg-arrow-left",
@@ -975,7 +985,6 @@ function populateDrawBar2() {
         "text",
         "overlay",
         "gg-controller",
-        "gg-erase",
         "gg-trash"
     ];
     let menuBtn, btnContents;
@@ -990,28 +999,25 @@ function populateDrawBar2() {
             menuBtn.id = "pageCount";
             continue;
         } else 
-        if(buttonType == "text") {
+        if(buttonType == "text" || buttonType == "overlay") {
             menuBtn = document.createElement("div");
             menuBtn.classList.add("canvasBtn");
             btnContents = document.createElement("i");
             btnContents.classList.add("center");
-            btnContents.textContent = "Tt";
-            menuBtn.addEventListener("click", addTextBox, false);
-            menuBtn.appendChild(btnContents);
-            document.getElementById("drawBar").appendChild(menuBtn);
-            continue;
-        } if(buttonType == "overlay") {
-            menuBtn = document.createElement("div");
-            menuBtn.classList.add("canvasBtn");
-            btnContents = document.createElement("i");
-            btnContents.classList.add("center");
-            btnContents.textContent = "Ov";
-            menuBtn.addEventListener("click", showOverlay, false);
+            switch(buttonType) {
+                case "text":
+                    btnContents.textContent = "Tt";
+                    menuBtn.addEventListener("click", addTextBox, false);
+                    break;
+                case "overlay":
+                    btnContents.textContent = "Ov";
+                    menuBtn.addEventListener("click", showOverlay, false);
+                    break;
+            }
             menuBtn.appendChild(btnContents);
             document.getElementById("drawBar").appendChild(menuBtn);
             continue;
         } else {
-            activeDot = menuBtn;
             menuBtn = document.createElement("div");
             menuBtn.classList.add("canvasBtn");
             btnContents = document.createElement("i");
@@ -1022,25 +1028,18 @@ function populateDrawBar2() {
             switch(buttonType) {
                 case "gg-pen":
                     menuBtn.addEventListener("click", enablePen, false);
-                    break;
-                /*case "gg-shape-square":
-                    menuBtn.addEventListener("click", rectangleDraw, false);
-                    break;
-                case "gg-shape-circle":
-                    menuBtn.addEventListener("click", circleDraw, false);
+                    activeMenuItem = menuBtn;
+                    menuBtn.classList.add("canvasBtnActive");
                     break;
                 case "gg-border-style-solid":
-                    menuBtn.addEventListener("click", lineDraw, false);
-                    break;*/
-                case "gg-border-style-solid":
-                    menuBtn.addEventListener("click", lineDraw/*shapesDropdown*/, false);
-                    menuBtn.addEventListener("dblclick", shapesDropdown, false);
+                    menuBtn.addEventListener("click", enableLineDraw, false);
+                    menuBtn.addEventListener("dblclick", shapeChooserMenu, false);
                     activeShape = buttonType;
                     activeShapeDiv = menuBtn;
                     break;
                 case "colorRect":
                     activeColorDiv = menuBtn;
-                    menuBtn.addEventListener("click", colorsDropDown, false);
+                    menuBtn.addEventListener("click", colorChooserMenu, false);
                     break;
                 case "pointer":
                     menuBtn.addEventListener("click", pointerMenu, false);
@@ -1052,7 +1051,7 @@ function populateDrawBar2() {
                     menuBtn.addEventListener("click", goToNextPage, false);
                     break;
                 case "gg-controller":
-                    menuBtn.addEventListener("click", moveObject, false);
+                    menuBtn.addEventListener("click", enableMoveObject, false);
                     break;
                 case "gg-trash":
                     menuBtn.addEventListener("click", clearCanvas, false);
@@ -1062,7 +1061,7 @@ function populateDrawBar2() {
                     menuBtn.addEventListener("click", lineSizeMenu, false);
                     break;
                 case "gg-erase":
-                    menuBtn.addEventListener("click", eraseObjects, false);
+                    menuBtn.addEventListener("click", enableEraser, false);
                     break;
             }
             
@@ -1070,13 +1069,16 @@ function populateDrawBar2() {
     }
 }
 
-function menuItemActive(e) {
-    activeDot.classList.remove("canvasBtnActive");
-    activeDot = e.currentTarget;
-    activeDot.classList.add("canvasBtnActive");
+
+// changes the css styling of the active menu item
+function changeActiveMenuItem(e) {
+    activeMenuItem.classList.remove("canvasBtnActive");
+    activeMenuItem = e.currentTarget;
+    activeMenuItem.classList.add("canvasBtnActive");
 }
 
-//Check if need to draw textBoxes onto canvas
+
+// Check if need to draw textBoxes onto canvas
 function changeCanvasFunction(newFunc) {
     if((canvasFunction == 'overlay' || canvasFunction == 'textBox') && newFunc != 'overlay'){
         fillTextBoxes(textBoxes);
@@ -1088,88 +1090,100 @@ function changeCanvasFunction(newFunc) {
     canvasFunction = newFunc;
 }
 
+
 function enablePen(e) {
     changeCanvasFunction("pen");
     canvas.style.cursor = "default";
-    menuItemActive(e);
+    changeActiveMenuItem(e);
 }
+
 
 function pointerMenu(e) {
     changeCanvasFunction("pointer");
     //take snapshot of current canvas
     imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
     canvas.style.cursor = "none";
-    menuItemActive(e);
+    changeActiveMenuItem(e);
 }
 
-function lineDraw(e) {
-    //take snapshot of current canvas
-    imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
-    changeCanvasFunction("line");
-    canvas.style.cursor = "default";
-    menuItemActive(e);
-}
 
 function addTextBox(e) {
     changeCanvasFunction("textBox");
     canvas.style.cursor = "default";
-    menuItemActive(e);
+    changeActiveMenuItem(e);
     textBox();
 }
+
 
 function showOverlay(e) {
     changeCanvasFunction("overlay");
     canvas.style.cursor = "default";
-    menuItemActive(e);
+    changeActiveMenuItem(e);
     overlay();
 }
 
-//Using changeCanvasFunction in case of unfilled textbox
+
+// Using changeCanvasFunction in case of unfilled textbox
 function goToNextPage() {
     changeCanvasFunction("nextPage");
     nextPage();
 }
+
 
 function goToPrevPage() {
     changeCanvasFunction("prevPage");
     prevPage();
 }
 
-function rectangleDraw(e) {
+
+function enableLineDraw(e) {
+    //take snapshot of current canvas
+    imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+    changeCanvasFunction("line");
+    canvas.style.cursor = "default";
+    changeActiveMenuItem(e);
+}
+
+
+function enableRectangleDraw(e) {
     imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
     changeCanvasFunction("rect");
     canvas.style.cursor = "default";
-    menuItemActive(e);
+    changeActiveMenuItem(e);
 }
 
-function circleDraw(e) {
+
+function enableEllipseDraw(e) {
     imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
     changeCanvasFunction("circle");
     canvas.style.cursor = "default";
-    menuItemActive(e);
+    changeActiveMenuItem(e);
 }
 
-function moveObject(e) {
+
+function enableMoveObject(e) {
     changeCanvasFunction("move");
     canvas.style.cursor = "default";
-    menuItemActive(e);
+    changeActiveMenuItem(e);
 }
 
-function eraseObjects(e) {
+
+function enableEraser(e) {
     changeCanvasFunction("erase");
-    canvas.style.cursor = "default";
-    menuItemActive(e);
+    canvas.style.cursor = "none";
+    changeActiveMenuItem(e);
 }
 
 
-// TODO: do these event listeners have to be removed later?
-let menuList = [];
-let activeColorDiv = null;
-function colorsDropDown(e) {
+function colorChooserMenu(e) {
+
     let menuBtn, colorChoice;
     let btn = e.currentTarget;
     let counter = 0;
-    if(menuList.length == 0) {
+
+    closeAllOpenMenus();
+
+    if(colorChoiceDivArray.length == 0) {
         let info = btn.getBoundingClientRect();
         for(let i = 1; i <= drawColors.length; i++) {
             if(drawColors[i-1] != activeColor) {
@@ -1184,41 +1198,46 @@ function colorsDropDown(e) {
                 colorChoice.classList.add("colorRect", "center");
                 colorChoice.style.backgroundColor = drawColors[i-1];
                 menuBtn.appendChild(colorChoice);
-                menuList.push(menuBtn);
+                colorChoiceDivArray.push(menuBtn);
                 document.getElementById("drawBar").appendChild(menuBtn);
                 menuBtn.addEventListener("click", changeColor, false);
                 counter++;
             }
         }
     } else {
-        for(let element of menuList) {
-            element.remove();
-        }
-        menuList = [];
+        closeColorChooserMenu();
     }
 }
+
+
+function closeColorChooserMenu() {
+    for(let element of colorChoiceDivArray) {
+        element.remove();
+    }
+    colorChoiceDivArray = [];
+}
+
 
 function changeColor(e) {
     let color = e.currentTarget.id;
     activeColor = color;
     activeSecondaryColor = secondaryColors[drawColors.indexOf(activeColor)];
-    for(let element of menuList) {
+    for(let element of colorChoiceDivArray) {
         element.remove();
     }
-    menuList = [];
+    colorChoiceDivArray = [];
     activeColorDiv.children[0].style.backgroundColor = activeColor;
 }
 
-var menuOpen = false;
-var popupElement = null;
-// TODO: don't have to delete and recreate it, just create it once and hide it!
+
 function lineSizeMenu(e) {
 
     let btn = e.currentTarget;
     let info = btn.getBoundingClientRect();
 
-    if(!menuOpen) {
-        menuOpen = true;
+    closeAllOpenMenus();
+
+    if(lineSizePopupElement == null) {
         let sizeChooserPopup = document.createElement("div");
         sizeChooserPopup.classList.add("lineSizePopup");
         sizeChooserPopup.style.height = info.height + "px";
@@ -1239,14 +1258,20 @@ function lineSizeMenu(e) {
         sizeChooserPopup.appendChild(decreaseSize);
         sizeChooserPopup.appendChild(increaseSize);
         document.getElementById("drawBar").appendChild(sizeChooserPopup);
-        popupElement = sizeChooserPopup;
+        lineSizePopupElement = sizeChooserPopup;
     } else {
-        popupElement.remove();
-        popupElement = null;
-        menuOpen = false;
+        closeLineSizeMenu();
     }
     
 }
+
+
+function closeLineSizeMenu() {
+    lineSizePopupElement.remove();
+    lineSizePopupElement = null;
+}
+
+
 function decreasePenSize(e) {
     let min = 2;
     if(penSize > min) {
@@ -1255,6 +1280,8 @@ function decreasePenSize(e) {
     document.getElementById("penSize").style.width = penSize + "px";
     document.getElementById("penSize").style.height = penSize + "px";
 }
+
+
 function increasePenSize(e) {
     let max = 20;
     if(penSize < max) {
@@ -1265,17 +1292,15 @@ function increasePenSize(e) {
 }
 
 
-// TODO: do these event listeners have to be removed later?
-let shapesList = ["gg-border-style-solid","gg-shape-square","gg-shape-circle",];
-let menuShapeList = [];
-let activeShapeDiv = null;
-let activeShape = null;
-let fillShapes = true;
-function shapesDropdown(e) {
+function shapeChooserMenu(e) {
+
     let menuBtn, shapeChoice;
     let btn = e.currentTarget;
     let counter = 0;
-    if(menuShapeList.length == 0) {
+
+    closeAllOpenMenus();
+
+    if(shapeMenuDivArray.length == 0) {
         let info = btn.getBoundingClientRect();
         for(let i = 1; i <= shapesList.length; i++) {
             if(shapesList[i-1] != activeShape) {
@@ -1289,7 +1314,7 @@ function shapesDropdown(e) {
                 shapeChoice = document.createElement("i");
                 shapeChoice.classList.add(shapesList[i-1], "center");
                 menuBtn.appendChild(shapeChoice);
-                menuShapeList.push(menuBtn);
+                shapeMenuDivArray.push(menuBtn);
                 document.getElementById("drawBar").appendChild(menuBtn);
                 switch(shapesList[i-1]) {
                     case "gg-border-style-solid":
@@ -1322,21 +1347,27 @@ function shapesDropdown(e) {
         div.appendChild(shapeChoice);
         div.appendChild(text);
         menuBtn.appendChild(div);
-        menuShapeList.push(menuBtn);
+        shapeMenuDivArray.push(menuBtn);
         document.getElementById("drawBar").appendChild(menuBtn);
         shapeChoice.addEventListener("change", setFillStatus, false);
     } else {
-        for(let element of menuShapeList) {
-            element.remove();
-        }
-        menuShapeList = [];
+        closeShapeChooserMenu();
     }
 }
 
+
+function closeShapeChooserMenu() {
+    for(let element of shapeMenuDivArray) {
+        element.remove();
+    }
+    shapeMenuDivArray = [];
+}
+
+
 function setFillStatus(e) {
     fillShapes = e.currentTarget.checked;
-    console.log(fillShapes);
 }
+
 
 function lineDrawActive(e) {
     //take snapshot of current canvas
@@ -1347,12 +1378,13 @@ function lineDrawActive(e) {
     activeShapeDiv.children[0].classList.remove(activeShape);
     activeShape = "gg-border-style-solid";
     activeShapeDiv.children[0].classList.add(activeShape);
-    for(let element of menuShapeList) {
+    for(let element of shapeMenuDivArray) {
         element.remove();
     }
-    menuShapeList = [];
-    activeShapeDiv.addEventListener("click", lineDraw, false);
+    shapeMenuDivArray = [];
+    activeShapeDiv.addEventListener("click", enableLineDraw, false);
 }
+
 
 function rectangleDrawActive(e) {
     imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
@@ -1362,12 +1394,13 @@ function rectangleDrawActive(e) {
     activeShapeDiv.children[0].classList.remove(activeShape);;
     activeShape = "gg-shape-square";
     activeShapeDiv.children[0].classList.add(activeShape);
-    for(let element of menuShapeList) {
+    for(let element of shapeMenuDivArray) {
         element.remove();
     }
-    menuShapeList = [];
-    activeShapeDiv.addEventListener("click", rectangleDraw, false);
+    shapeMenuDivArray = [];
+    activeShapeDiv.addEventListener("click", enableRectangleDraw, false);
 }
+
 
 function circleDrawActive(e) {
     imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
@@ -1377,11 +1410,32 @@ function circleDrawActive(e) {
     activeShapeDiv.children[0].classList.remove(activeShape);
     activeShape = "gg-shape-circle";
     activeShapeDiv.children[0].classList.add(activeShape);
-    for(let element of menuShapeList) {
+    for(let element of shapeMenuDivArray) {
         element.remove();
     }
-    menuShapeList = [];
-    activeShapeDiv.addEventListener("click", circleDraw, false);
+    shapeMenuDivArray = [];
+    activeShapeDiv.addEventListener("click", enableEllipseDraw, false);
 }
 
-populateDrawBar2();
+
+function closeAllOpenMenus() {
+    if(lineSizePopupElement != null) {
+        closeLineSizeMenu();
+    }
+    if(colorChoiceDivArray.length != 0) {
+        closeColorChooserMenu();
+    }
+    if(shapeMenuDivArray.length != 0) {
+        closeShapeChooserMenu();
+    }
+}
+
+
+function pageSetup() {
+    populateDrawBar();
+    window.onmousemove = move;
+    window.onresize = resize;
+    resize();
+}
+
+pageSetup();
