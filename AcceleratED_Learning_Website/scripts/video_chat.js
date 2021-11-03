@@ -64,14 +64,36 @@ var imageData;
 
 // resize the canvas based on the window size
 // enforces a 16:9 aspect ratio
-// TODO:
-//  - Set min height
 function resize() {
-    let canvasHeight = canvas.parentElement.clientHeight;
+    let canvasHeight = canvas.parentElement.clientHeight - 52;
     canvas.height = canvasHeight;
     canvas.width = Math.max(500, Math.floor(16/9 * canvasHeight));
-    console.log(canvasHeight);
-    clearCanvas();
+    scaleCanvas();
+    // console.log(canvasHeight);
+    // clearCanvas();
+}
+
+// scales the elements drawn on the canvas
+// HACK: this is very inefficient and will probably lead to inaccuracies
+var prevCanvasHeight = 1;
+function scaleCanvas() {
+    let scale = canvas.clientHeight / prevCanvasHeight;
+    console.log('New Height: ' + canvas.clientHeight + "\nOld Height: " + prevCanvasHeight + "\nScale: " + scale);
+    prevCanvasHeight = canvas.clientHeight;
+    scaleDrawings(scale);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    redrawCanvas(drawings);
+}
+
+// scales all of the points in the provided page
+// WARNING: repeatedly running this may cause a shift in the drawings over time
+function scaleDrawings(scale) {
+    for(let drawing of drawings) {
+        for(let point of drawing.points) {
+            point.x = point.x*scale;
+            point.y = point.y*scale;
+        }
+    }
 }
 
 // remove all elements from the convas
