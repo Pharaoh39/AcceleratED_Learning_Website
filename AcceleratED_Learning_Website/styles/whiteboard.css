@@ -73,31 +73,6 @@ video {
     gap: 10px;
 }
 
-/*.selectorIndicator {
-    border-radius: 100%;
-    margin: 5px;
-    padding: 3px;
-    display: inline-block;
-}
-.selectorActive {
-    outline: 2px solid var(--bdr-color2);
-}*/
-
-.colorDot {
-    width: 30px;
-    height: 30px;
-    margin: 0;
-    padding: 0;
-    background-color: white;
-    color: white;
-    text-align: center;
-    line-height: 30px;
-    font-weight: bold;
-    border-radius: 100%;
-    cursor: pointer;
-    font-size: 20px;
-}
-
 .pointer {
     width: 30px;
     height: 30px;
