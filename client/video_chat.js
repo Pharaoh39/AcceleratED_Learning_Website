@@ -469,7 +469,7 @@ function hasClickedShape(e) {
     if(e.buttons) {
         for(var i = drawings.length - 1; i >= 0; i--) {
             let object = drawings[i];
-            if(object.type == "rect" && withinRectangleBounds(e, object)) {
+            if(object.type == "rect" || object.type == "image" && withinRectangleBounds(e, object)) {
                 selectObjectLayer = i;
                 return object;
             } else
@@ -533,7 +533,7 @@ function drawEditSelectors(selectedObject) {
     if(selectedObject.type == "circle") {
         origin = {x: selectedObject.points[0].x-selectedObject.points[1].x, y: selectedObject.points[0].y-selectedObject.points[1].y};
         offset = {x: selectedObject.points[1].x*2, y: selectedObject.points[1].y*2};
-    } else if(selectedObject.type == "rect") {
+    } else if(selectedObject.type == "rect" || selectObject.type == "image") {
         origin = {x: selectedObject.points[0].x, y: selectedObject.points[0].y};
         offset = {x: selectedObject.points[1].x, y: selectedObject.points[1].y};
     } else if(selectObject.type == "line") {
@@ -588,7 +588,7 @@ function changeIcon(e, selectedObject) {
     if(selectedObject.type == "circle") {
         origin = {x: selectedObject.points[0].x-selectedObject.points[1].x, y: selectedObject.points[0].y-selectedObject.points[1].y};
         offset = {x: selectedObject.points[1].x*2, y: selectedObject.points[1].y*2};
-    } else if(selectedObject.type == "rect") {
+    } else if(selectedObject.type == "rect" || selectedObject.type == "image") {
         origin = {x: selectedObject.points[0].x, y: selectedObject.points[0].y};
         offset = {x: selectedObject.points[1].x, y: selectedObject.points[1].y};
     } else if(selectObject.type == "line") {
@@ -851,6 +851,9 @@ function redrawCanvas(page) {
         } else if (drawing.type == "circle") {
             redrawCircle(drawing);
         }
+        else if (drawing.type == "image") {
+            redrawImage(drawing);
+        }
     }
 }
 
@@ -952,6 +955,25 @@ function overlay() {
     }
 }
 
+function insertImage() {
+    let input = document.createElement('input');
+    let imageToInsert = document.createElement('img');
+    input.type = 'file';
+    input.onchange = (e) => {
+        imageToInsert.onload = function(){
+            imageOffsetX = 0;
+            imageOffsetY = 0;
+            ctx.drawImage(imageToInsert,imageOffsetX,imageOffsetY);
+            currentImage = {type: "image", img: imageToInsert, points: []};
+            currentImage.points.push({x: imageOffsetX, y: imageOffsetY});
+            currentImage.points.push({x: imageToInsert.width, y: imageToInsert.height});
+            drawings.push(currentImage);
+          };
+        imageToInsert.src = URL.createObjectURL(e.target.files[0]);
+    };
+    input.click();
+}
+
 function redrawRect(drawing) {
     ctx.beginPath();
     ctx.rect(drawing.points[0].x, drawing.points[0].y, drawing.points[1].x, drawing.points[1].y);
@@ -987,6 +1009,10 @@ function redrawCircle(drawing) {
     }
     ctx.lineWidth = drawing.lineWidth;
     ctx.stroke();
+}
+
+function redrawImage(drawing){
+    ctx.drawImage(drawing.img, drawing.points[0].x, drawing.points[0].y, drawing.points[1].x, drawing.points[1].y);
 }
 
 /* ---------------------------------------------- */
@@ -1069,6 +1095,7 @@ function populateDrawBar2() {
         "text",
         "overlay",
         "gg-controller",
+        "imageInsert",
         "gg-erase",
         "gg-trash"
     ];
@@ -1094,13 +1121,23 @@ function populateDrawBar2() {
             menuBtn.appendChild(btnContents);
             document.getElementById("drawBar").appendChild(menuBtn);
             continue;
-        } if(buttonType == "overlay") {
+        } else if(buttonType == "overlay") {
             menuBtn = document.createElement("div");
             menuBtn.classList.add("canvasBtn");
             btnContents = document.createElement("i");
             btnContents.classList.add("center");
             btnContents.textContent = "Ov";
             menuBtn.addEventListener("click", showOverlay, false);
+            menuBtn.appendChild(btnContents);
+            document.getElementById("drawBar").appendChild(menuBtn);
+            continue;
+        } else if(buttonType == "imageInsert") {
+            menuBtn = document.createElement("div");
+            menuBtn.classList.add("canvasBtn");
+            btnContents = document.createElement("i");
+            btnContents.classList.add("center");
+            btnContents.textContent = "Img";
+            menuBtn.addEventListener("click", pickImage, false);
             menuBtn.appendChild(btnContents);
             document.getElementById("drawBar").appendChild(menuBtn);
             continue;
@@ -1216,6 +1253,13 @@ function showOverlay(e) {
     canvas.style.cursor = "default";
     menuItemActive(e);
     overlay();
+}
+
+function pickImage(e) {
+    changeCanvasFunction("insertImage");
+    canvas.style.cursor = "default";
+    menuItemActive(e);
+    insertImage();
 }
 
 //Using changeCanvasFunction in case of unfilled textbox
