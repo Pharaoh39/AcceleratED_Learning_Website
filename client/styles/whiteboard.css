@@ -137,7 +137,7 @@ video {
     border-top: 2px solid gray;
     background: none;
     display: grid;
-    grid-template-columns: repeat(15, 1fr);
+    grid-template-columns: repeat(13, 1fr);
     gap: 10px;
 }
 
@@ -180,65 +180,6 @@ video {
     background: radial-gradient(circle, rgba(251,63,63,1) 28%, rgba(252,70,95,0) 44%);
 }
 
-.line {
-    width: 30px;
-    height: 4px;
-    margin: 13px 0;
-    padding: 0;
-    text-align: center;
-    line-height: 30px;
-    font-weight: bold;
-    border-radius: 2px;
-    cursor: pointer;
-    background-color: black;
-    transform: rotate(45deg);
-}
-
-.rectangle {
-    width: 23px;
-    height: 23px;
-    margin: 4px;
-    padding: 0;
-    text-align: center;
-    line-height: 30px;
-    font-weight: bold;
-    border-radius: 2px;
-    cursor: pointer;
-    background-color: #a3c4e3;
-    border: 2px solid #4198E9;
-    box-sizing: border-box;
-}
-
-.circle {
-    width: 30px;
-    height: 30px;
-    margin: 0;
-    padding: 0;
-    text-align: center;
-    line-height: 30px;
-    font-weight: bold;
-    border-radius: 100%;
-    cursor: pointer;
-    background-color: #a3c4e3;
-    border: 2px solid #4198E9;
-    box-sizing: border-box;
-}
-
-.penSize {
-    width: 2px;
-    height: 2px;
-    margin: 5px;
-    padding: 0;
-    background-color: white;
-    color: white;
-    text-align: center;
-    line-height: 30px;
-    font-weight: bold;
-    border-radius: 100%;
-    cursor: pointer;
-    font-size: 20px;
-}
-
 .bottomItem {
     display: inline-block;
     line-height: 46px;
@@ -278,6 +219,10 @@ video {
 .center {
     place-self: center;
     text-align: center;
+}
+.centerCheckbox {
+    place-self: center;
+    /*text-align: center;*/
 }
 
 .canvasBtn {
