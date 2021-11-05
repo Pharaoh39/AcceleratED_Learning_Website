@@ -52,6 +52,7 @@ var textLastPoint;
 var pages = [];
 var currentPage = 1;
 var drawings = [];
+var redoDrawings = [];
 var textBoxes = [];
 var currentLine = {
     type: null,
@@ -70,7 +71,7 @@ function resize() {
 
 // remove all elements from the convas
 function clearCanvas() {
-    drawings = [];
+    drawings.length = 0;
     for (const box of textBoxes){
         box.remove();
     }
@@ -82,13 +83,31 @@ function clearCanvas() {
 document.addEventListener('keydown', function(event) {
     if (event.ctrlKey && event.key === 'z') {
       if(drawings.length > 0) {
-          drawings.pop();
+          let drawing = drawings.pop();
+          redoDrawings.push(drawing);
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           redrawCanvas(drawings);
           fillTextBoxes(textBoxes);
       }
     }
 });
+
+
+// pressing ctrl+y will undo the last action stored on the page
+// TODO: does not work for shape movement
+// TODO: does not work for textbox movement
+document.addEventListener('keydown', function(event) {
+    if (event.ctrlKey && event.key === 'y') {
+      if(redoDrawings.length > 0) {
+          let drawing = redoDrawings.pop();
+          drawings.push(drawing);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          redrawCanvas(drawings);
+          fillTextBoxes(textBoxes);
+      }
+    }
+});
+
 
 // function to handle the different functions for the differen whiteboard tools that require a mouse position
 function move(e) {
@@ -901,6 +920,7 @@ function redrawCircle(drawing) {
 
 // loads the next page or creates a new page
 function nextPage() {
+    redoDrawings.length = 0;
     pages[currentPage - 1] = {drawings: drawings, curTextBoxes: textBoxes};
     let numPages = pages.length;
     if(currentPage + 1 <= numPages) {
@@ -921,6 +941,7 @@ function nextPage() {
  
 // loads the previous page if possible
 function prevPage() {
+    redoDrawings.length = 0;
     pages[currentPage - 1] = {drawings: drawings, curTextBoxes: textBoxes};
     let numPages = pages.length;
     if(currentPage - 1 > 0) {
