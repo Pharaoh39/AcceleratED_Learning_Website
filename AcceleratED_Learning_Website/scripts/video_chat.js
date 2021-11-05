@@ -66,25 +66,50 @@ var imageData;
 function resize() {
     ctx.canvas.width = canvas.parentElement.clientWidth;
     ctx.canvas.height = canvas.parentElement.clientHeight - 52;
-    clearCanvas();
+    //clearCanvas();
 }
 
-// remove all elements from the convas
+// stop redrawing at 'CLEAR' flag, allows ctrl-z to work
 function clearCanvas() {
-    drawings.length = 0;
+    /*drawings.length = 0;
     for (const box of textBoxes){
         box.remove();
-    }
+    }*/
+    drawings.push({type: 'CLEAR'});
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
 }
+
+
+/*
+
+CTRL+Z:
+    - undo the previous action
+        - undo draw shape/line
+        - move shape back to last position
+        - undo clear operation
+        - local to page
+            - clear buffer when switching pages
+    - undo the redo
+
+CTRL+Y
+    - redo the previous action
+    - only redo actions that were affected by ctrl+z
+    - redo buffer gets cleared after the user draws anything
+*/
 
 // pressing ctrl+z will remove the last drawn element on the page
 document.addEventListener('keydown', function(event) {
     if (event.ctrlKey && event.key === 'z') {
       if(drawings.length > 0) {
+
           let drawing = drawings.pop();
           redoDrawings.push(drawing);
+
+          if(drawing.constructor.name == 'MoveShapeAction') {
+              drawing.undo();
+          }
+
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           redrawCanvas(drawings);
           fillTextBoxes(textBoxes);
@@ -99,14 +124,94 @@ document.addEventListener('keydown', function(event) {
 document.addEventListener('keydown', function(event) {
     if (event.ctrlKey && event.key === 'y') {
       if(redoDrawings.length > 0) {
-          let drawing = redoDrawings.pop();
-          drawings.push(drawing);
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          redrawCanvas(drawings);
-          fillTextBoxes(textBoxes);
+            let drawing = redoDrawings.pop();
+            drawings.push(drawing);
+            if(drawing.constructor.name == 'MoveShapeAction') {
+                drawing.undo();
+            }
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            redrawCanvas(drawings);
+            fillTextBoxes(textBoxes);
       }
     }
 });
+
+
+/* CTRZ-Z able actions
+    - draw/erase
+        - can be done in regular fashon with existing representation
+    - draw shape
+        - can be done in regular fashon with existing implementation
+    - move shape
+        - cannot be done in regular fashon
+        - need to store object reference, original position, new position
+    - clear
+        - cannot be done in regular fashon
+        - need to copy and store drawings array
+    - delete shape
+        - cannot be done in regular fashon
+        - need to store copy of the object
+        - feature not even implemented yet
+        - needs to keep shape position in drawings array
+*/
+
+
+// object to hold the data to undo/redo the move shape operation
+// TODO: should this object also support shape deletion an restoration
+function MoveShapeAction(objRef, initPos, newPos) {
+    this.objRef = objRef; // reference to drawing object stored in the array
+    this.initPos = initPos; // array that contains original origin and offset points (drawing.points)
+    this.newPos = newPos; // array that constains new origin and offset poitns (drawing.points)
+}
+
+// TODO: should this function move itself from undo list to redo list? 
+MoveShapeAction.prototype.undo = function () {
+    this.objRef.points = this.initPos;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    redrawCanvas(drawings);
+    fillTextBoxes(textBoxes);
+}
+
+MoveShapeAction.prototype.redo = function () {
+    this.objRef.points = this.newPos;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    redrawCanvas(drawings);
+    fillTextBoxes(textBoxes);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // function to handle the different functions for the differen whiteboard tools that require a mouse position
@@ -587,7 +692,11 @@ function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
     const [origin, offset] = selectedObject.points;
 
     if(e.buttons) {
-        if(!inMotionResize) inMotionResize = true;
+        if(!inMotionResize) {
+            inMotionResize = true;
+            originalPoints.push({x: selectedObject.points[0].x, y: selectedObject.points[0].y});
+            originalPoints.push({x: selectedObject.points[1].x, y: selectedObject.points[1].y});
+        }
         switch(ctrlPoint) {
             case "top-left":
                 offset.x = (origin.x - e.offsetX) + offset.x;
@@ -655,6 +764,16 @@ function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
         fillTextBoxes(textBoxes);
         drawEditSelectors(selectedObject);
     } else {
+        if(originalPoints.length != 0) {
+            // TODO: clicking but not moving shape will still produce an entry
+            let newPoints = [];
+            newPoints.push({x: selectedObject.points[0].x, y: selectedObject.points[0].y});
+            newPoints.push({x: selectedObject.points[1].x, y: selectedObject.points[1].y});
+            let newAction = new MoveShapeAction(selectedObject, originalPoints, selectedObject.points);
+            drawings.push(newAction);
+            originalPoints = [];
+            console.log(newAction);
+        }
         inMotionResize = false;
     }
 }
@@ -665,7 +784,11 @@ function resizeCircleFromPoint(e, ctrlPoint, selectedObject) {
     const [origin, offset] = selectedObject.points;
 
     if(e.buttons) {
-        if(!inMotionResize) inMotionResize = true;
+        if(!inMotionResize) {
+            inMotionResize = true;
+            originalPoints.push({x: selectedObject.points[0].x, y: selectedObject.points[0].y});
+            originalPoints.push({x: selectedObject.points[1].x, y: selectedObject.points[1].y});
+        }
         switch(ctrlPoint) {
             case "top-left":
             case "top-right":
@@ -691,6 +814,16 @@ function resizeCircleFromPoint(e, ctrlPoint, selectedObject) {
         fillTextBoxes(textBoxes);
         drawEditSelectors(selectedObject);
     } else {
+        if(originalPoints.length != 0) {
+            // TODO: clicking but not moving shape will still produce an entry
+            let newPoints = [];
+            newPoints.push({x: selectedObject.points[0].x, y: selectedObject.points[0].y});
+            newPoints.push({x: selectedObject.points[1].x, y: selectedObject.points[1].y});
+            let newAction = new MoveShapeAction(selectedObject, originalPoints, selectedObject.points);
+            drawings.push(newAction);
+            originalPoints = [];
+            //console.log(newAction);
+        }
         inMotionResize = false;
     }
 }
@@ -700,7 +833,11 @@ function resizeLineFromPoint(e, ctrlPoint, selectedObject) {
     let [origin, offset] = selectedObject.points;
 
     if(e.buttons) {
-        if(!inMotionResize) inMotionResize = true;
+        if(!inMotionResize) {
+            inMotionResize = true;
+            originalPoints.push({x: selectedObject.points[0].x, y: selectedObject.points[0].y});
+            originalPoints.push({x: selectedObject.points[1].x, y: selectedObject.points[1].y});
+        }
         switch(ctrlPoint) {
             case "top-left":
                 origin.x = e.offsetX;
@@ -716,6 +853,16 @@ function resizeLineFromPoint(e, ctrlPoint, selectedObject) {
         fillTextBoxes(textBoxes);
         drawEditSelectors(selectedObject);
     } else {
+        if(originalPoints.length != 0) {
+            // TODO: clicking but not moving shape will still produce an entry
+            let newPoints = [];
+            newPoints.push({x: selectedObject.points[0].x, y: selectedObject.points[0].y});
+            newPoints.push({x: selectedObject.points[1].x, y: selectedObject.points[1].y});
+            let newAction = new MoveShapeAction(selectedObject, originalPoints, selectedObject.points);
+            drawings.push(newAction);
+            originalPoints = [];
+            //console.log(newAction);
+        }
         inMotionResize = false;
     }
 }
@@ -724,12 +871,16 @@ function resizeLineFromPoint(e, ctrlPoint, selectedObject) {
 // Moves the selected shape to the cursor
 var cursorOffsetFromOrigin = null;
 var inMotion = false;
+var originalPoints = [];
 function moveShapeToCursor(e, selectedObject) {
-
+    
     if(e.buttons) {
         if(cursorOffsetFromOrigin == null) {
             cursorOffsetFromOrigin = {x: e.offsetX-selectedObject.points[0].x, y: e.offsetY-selectedObject.points[0].y};
             inMotion = true;
+            originalPoints.push({x: selectedObject.points[0].x, y: selectedObject.points[0].y});
+            originalPoints.push({x: selectedObject.points[1].x, y: selectedObject.points[1].y});
+            //console.log(originalPoints);
             return;
         }
         let offsetX = selectedObject.points[1].x-selectedObject.points[0].x;
@@ -745,6 +896,16 @@ function moveShapeToCursor(e, selectedObject) {
         fillTextBoxes(textBoxes);
         drawEditSelectors(selectedObject);
     } else {
+        if(originalPoints.length != 0) {
+            // TODO: clicking but not moving shape will still produce an entry
+            let newPoints = [];
+            newPoints.push({x: selectedObject.points[0].x, y: selectedObject.points[0].y});
+            newPoints.push({x: selectedObject.points[1].x, y: selectedObject.points[1].y});
+            let newAction = new MoveShapeAction(selectedObject, originalPoints, selectedObject.points);
+            drawings.push(newAction);
+            originalPoints = [];
+            //console.log(newAction);
+        }
         cursorOffsetFromOrigin = null;
         inMotion = false;
     }
@@ -767,7 +928,6 @@ function moveShape2(e) {
 
 // redraws all lines and shapes stored on the specified page
 function redrawCanvas(page) {
-    //console.log(page);
     for(let drawing of page) {
         if(drawing.type == "line" || drawing.type == "poly") {
             redrawLine(drawing);
@@ -775,6 +935,10 @@ function redrawCanvas(page) {
             redrawRect(drawing);
         } else if (drawing.type == "circle") {
             redrawCircle(drawing);
+        } else if (drawing.type == 'CLEAR') {
+            // HACK: very inefficient, potentially draws many unneeded shapes
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
         }
     }
 }
