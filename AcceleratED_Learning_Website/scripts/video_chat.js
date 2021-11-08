@@ -90,6 +90,24 @@ document.addEventListener('keydown', function(event) {
     }
 });
 
+// pressing delete or backspace will delete the selected shape is possible
+document.addEventListener('keydown', function(event) {
+    if (event.key == "Backspace" || event.key == "Delete") {
+      if (selectObject != null) {
+          for(let i = 0; i < drawings.length; i++) {
+              const drawing = drawings[i];
+              if(selectObject == drawing) {
+                  drawings.splice(i,1);
+                  break;
+              }
+          }
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          redrawCanvas(drawings);
+          fillTextBoxes(textBoxes);
+      }
+    }
+});
+
 // function to handle the different functions for the differen whiteboard tools that require a mouse position
 function move(e) {
     if(e.target.id != "canvas") return;
