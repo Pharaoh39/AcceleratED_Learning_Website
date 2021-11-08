@@ -119,7 +119,6 @@ document.addEventListener('keydown', function(event) {
 
 
 // pressing ctrl+y will undo the last action stored on the page
-// TODO: does not work for shape movement
 // TODO: does not work for textbox movement
 document.addEventListener('keydown', function(event) {
     if (event.ctrlKey && event.key === 'y') {
@@ -127,7 +126,7 @@ document.addEventListener('keydown', function(event) {
             let drawing = redoDrawings.pop();
             drawings.push(drawing);
             if(drawing.constructor.name == 'MoveShapeAction') {
-                drawing.undo();
+                drawing.redo();
             }
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             redrawCanvas(drawings);
@@ -157,14 +156,12 @@ document.addEventListener('keydown', function(event) {
 
 
 // object to hold the data to undo/redo the move shape operation
-// TODO: should this object also support shape deletion an restoration
 function MoveShapeAction(objRef, initPos, newPos) {
     this.objRef = objRef; // reference to drawing object stored in the array
     this.initPos = initPos; // array that contains original origin and offset points (drawing.points)
     this.newPos = newPos; // array that constains new origin and offset poitns (drawing.points)
 }
 
-// TODO: should this function move itself from undo list to redo list? 
 MoveShapeAction.prototype.undo = function () {
     this.objRef.points = this.initPos;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -180,43 +177,10 @@ MoveShapeAction.prototype.redo = function () {
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // function to handle the different functions for the differen whiteboard tools that require a mouse position
 function move(e) {
     if(e.target.id != "canvas") return;
+    if(redoDrawings.length > 0) redoDrawings.length = 0;
     switch(canvasFunction) {
         case "pen":
             pen(e);
