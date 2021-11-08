@@ -221,15 +221,62 @@ function rectangle(e) {
         ctx.stroke();
     } else {
         if(lastPoint != null) {
-            currentLine = {type: "rect", color: activeColor, fill: fillShapes, lineWidth: penSize, points: []};
+            let newRectObject = new Rectangle(activeColor, fillShapes, penSize, lastPoint, {x: e.offsetX-lastPoint.x, y: e.offsetY-lastPoint.y});
+            /*currentLine = {type: "rect", color: activeColor, fill: fillShapes, lineWidth: penSize, points: []};
             currentLine.points.push(lastPoint);
             currentLine.points.push({x: e.offsetX-lastPoint.x, y: e.offsetY-lastPoint.y});
-            drawings.push(currentLine);
+            drawings.push(currentLine);*/
+            drawings.push(newRectObject);
             imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
         }
         lastPoint = null;
     }
 
+}
+
+
+/* -------------------------------------- */
+/* ---------- Rectangle Object ---------- */
+/* -------------------------------------- */
+
+
+// Time to create a rectangle object!
+function Rectangle(color, fill, lineWidth, origin, offset) {
+    this.color = color;
+    this.fill = fill;
+    this.lineWidth = lineWidth;
+    this.origin = origin;
+    this.offset = offset;
+}
+
+// Checks if the given point is within the rectangle
+Rectangle.prototype.isWithin = function ({x, y}) {
+    // Check if within x bounds of the rectangle
+    if(this.offset.x > 0 && this.origin.x < x && (this.origin.x + this.offset.x) > x) return true;
+    if(this.offset.x > 0 && this.origin.x < x && (this.origin.x + this.offset.x) > x) return true;
+    // Check if within y bounds of the rectangle
+    if(this.offset.y > 0 && this.origin.y < y && (this.origin.y + this.offset.y) > y) return true;
+    if(this.offset.y > 0 && this.origin.y < y && (this.origin.y + this.offset.y) > y) return true;
+    // Else
+    return false;
+}
+
+// Draws the rectangle on the canvas
+Rectangle.prototype.draw = function() {
+    ctx.beginPath();
+    ctx.rect(this.origin.x, this.origin.y, this.offset.x, this.offset.y);
+    ctx.strokeStyle = this.color;
+    if(this.fill) {
+        // HACK: this should really be done better
+        try {
+            ctx.fillStyle = secondaryColors[drawColors.indexOf(rgb2hex(this.color))];
+        } catch {
+            ctx.fillStyle = secondaryColors[drawColors.indexOf(this.color)];
+        }
+        ctx.fill();
+    }
+    ctx.lineWidth = this.lineWidth;
+    ctx.stroke();
 }
 
 
@@ -393,7 +440,7 @@ function hasClickedShape(e) {
     if(e.buttons) {
         for(var i = drawings.length - 1; i >= 0; i--) {
             let object = drawings[i];
-            if(object.type == "rect" && withinRectangleBounds(e, object)) {
+            if(object.constructor.name == 'Rectangle' && object.isWithin({x: e.offsetX, x: e.offsetY})) {
                 selectObjectLayer = i;
                 return object;
             } else
@@ -411,7 +458,7 @@ function hasClickedShape(e) {
 }
 
 // Takes the mouse position event and a rectangle object and outputs true if the mouse position is within the ellipse bounds
-function withinRectangleBounds({offsetX, offsetY}, {points}) {
+/*function withinRectangleBounds({offsetX, offsetY}, {points}) {
     // check within x bounds of the rectangle
     if(points[1].x > 0) {
         if(points[0].x > offsetX || (points[0].x + points[1].x) < offsetX) return false;
@@ -425,7 +472,7 @@ function withinRectangleBounds({offsetX, offsetY}, {points}) {
         if(points[0].y < offsetY || (points[0].y + points[1].y) > offsetY) return false;
     }
     return true;
-}
+}*/
 
 // Takes the mouse position event and an ellipse object and outputs true if the mouse position is within the ellipse bounds
 function withinEllipseBounds({offsetX, offsetY}, {points}) {
@@ -770,8 +817,8 @@ function redrawCanvas(page) {
     for(let drawing of page) {
         if(drawing.type == "line" || drawing.type == "poly") {
             redrawLine(drawing);
-        } else if(drawing.type == "rect") {
-            redrawRect(drawing);
+        } else if(drawing.constructor.name == 'Rectangle') { // TODO: remember this will not work with inheritance
+            drawing.draw();
         } else if (drawing.type == "circle") {
             redrawCircle(drawing);
         }
@@ -876,7 +923,7 @@ function overlay() {
     }
 }
 
-function redrawRect(drawing) {
+/*function redrawRect(drawing) {
     ctx.beginPath();
     ctx.rect(drawing.points[0].x, drawing.points[0].y, drawing.points[1].x, drawing.points[1].y);
     ctx.strokeStyle = drawing.color;
@@ -891,7 +938,7 @@ function redrawRect(drawing) {
     }
     ctx.lineWidth = drawing.lineWidth;
     ctx.stroke();
-}
+}*/
 
 function redrawCircle(drawing) {
     ctx.beginPath();
