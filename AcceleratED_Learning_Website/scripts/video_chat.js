@@ -53,12 +53,7 @@ var pages = [];
 var currentPage = 1;
 var drawings = [];
 var textBoxes = [];
-var currentLine = {
-    type: null,
-    color: activeColor,
-    lineWidth: penSize,
-    points: []
-}
+var currentLine = null;
 var imageData;
 
 // resize the canvas based on the window size and center the whiteboard menu vertically in the canvas
@@ -279,9 +274,75 @@ Rectangle.prototype.draw = function() {
     ctx.stroke();
 }
 
+/* ------------------------------------ */
+/* ---------- Ellipse Object ---------- */
+/* ------------------------------------ */
+
+// Time to create an ellipse object!
+function Ellipse(color, fill, lineWidth, origin, radius) {
+    this.color = color;
+    this.fill = fill;
+    this.lineWidth = lineWidth;
+    this.origin = origin;
+    this.radius = radius;
+}
+
+// Checks if the given point is within the rectangle
+Ellipse.prototype.isWithin = function({x, y}) {
+    let multiplier = Math.pow(this.radius.x,2) * Math.pow(this.radius.y,2);
+    let ellipseCalculation = Math.pow(this.radius.y,2) * Math.pow(x - this.origin.x, 2) + Math.pow(this.radius.x,2) * Math.pow(y - this.origin.y, 2);
+    return ellipseCalculation <= multiplier ? true : false;
+}
+
+// Draws the ellipse on the canvas
+Ellipse.prototype.draw = function() {
+    ctx.beginPath();
+    ctx.ellipse(this.origin.x, this.origin.y, this.radius.x, this.radius.y, 0, 0, 2*Math.PI);
+    ctx.strokeStyle = this.color;
+    if(this.fill) {
+        // HACK: this should really be done better
+        try {
+            ctx.fillStyle = secondaryColors[drawColors.indexOf(rgb2hex(this.color))];
+        } catch {
+            ctx.fillStyle = secondaryColors[drawColors.indexOf(this.color)];
+        }
+        ctx.fill();
+    }
+    ctx.lineWidth = this.lineWidth;
+    ctx.stroke();
+}
+
 
 // lets the user draw an ellipse
+var drawingNewShape = false;
 function circle(e) {
+    if(e.buttons) {
+        if(!drawingNewShape) {
+            currentLine = new Ellipse(activeColor, fillShapes, penSize, {x: e.offsetX, y: e.offsetY}, null);
+            drawingNewShape = true;
+            return;
+        }
+        ctx.putImageData(imageData, 0, 0);
+        let radiusX = Math.abs(currentLine.origin.x - e.offsetX);
+        let radiusY = Math.abs(currentLine.origin.y - e.offsetY);
+        if(e.ctrlKey) {
+            radiusX <= radiusY ? radiusY = radiusX : radiusX = radiusY;
+        }
+        currentLine.radius = {x: radiusX, y: radiusY};
+        currentLine.draw();
+    } else {
+        if(currentLine != null) {
+            drawingNewShape = false;
+            drawings.push(currentLine);
+            imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+        }
+        currentLine = null;
+    }
+}
+
+
+// lets the user draw an ellipse
+/*function circle(e) {
     let radiusX, radiusY;
     if(e.buttons) {
         ctx.putImageData(imageData, 0, 0);
@@ -316,7 +377,7 @@ function circle(e) {
         lastPoint = null;
     }
 
-}
+}*/
 
 //creates a pointer by drawing a red dot at the mouse postion, erasing everything, redrawing all the elements, and repeating
 var secondLastPoint = null;
@@ -475,11 +536,11 @@ function hasClickedShape(e) {
 }*/
 
 // Takes the mouse position event and an ellipse object and outputs true if the mouse position is within the ellipse bounds
-function withinEllipseBounds({offsetX, offsetY}, {points}) {
+/*function withinEllipseBounds({offsetX, offsetY}, {points}) {
     let multiplier = Math.pow(points[1].x, 2) * Math.pow(points[1].y, 2);
     let ellipleCalculation = Math.pow(points[1].y, 2) * Math.pow(offsetX - points[0].x, 2) + Math.pow(points[1].x, 2) * Math.pow(offsetY - points[0].y, 2);
     return ellipleCalculation <= multiplier ? true : false;
-}
+}*/
 
 // Takes the mouse position event and an line object and outputs true if the mouse position is within the line bounds
 function withinLineBounds({offsetX, offsetY}, {points}) {
@@ -940,7 +1001,7 @@ function overlay() {
     ctx.stroke();
 }*/
 
-function redrawCircle(drawing) {
+/*function redrawCircle(drawing) {
     ctx.beginPath();
     //let radius = Math.sqrt(Math.pow(drawing.points[1].x, 2) + Math.pow(drawing.points[1].y, 2));
     let radiusX = drawing.points[1].x;
@@ -958,7 +1019,7 @@ function redrawCircle(drawing) {
     }
     ctx.lineWidth = drawing.lineWidth;
     ctx.stroke();
-}
+}*/
 
 /* ---------------------------------------------- */
 /* ---------- Javascript for Page menu ---------- */
