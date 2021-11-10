@@ -74,14 +74,18 @@ function clearCanvas() {
     imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
 }
 
+function hardRefresh() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    redrawCanvas(drawings);
+    fillTextBoxes(textBoxes);
+}
+
 // pressing ctrl+z will remove the last drawn element on the page
 document.addEventListener('keydown', function(event) {
     if (event.ctrlKey && event.key === 'z') {
       if(drawings.length > 0) {
           drawings.pop();
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          redrawCanvas(drawings);
-          fillTextBoxes(textBoxes);
+          hardRefresh();
       }
     }
 });
@@ -97,9 +101,7 @@ document.addEventListener('keydown', function(event) {
                   break;
               }
           }
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          redrawCanvas(drawings);
-          fillTextBoxes(textBoxes);
+          hardRefresh();
       }
     }
 });
@@ -137,6 +139,60 @@ function move(e) {
     }
 }
 
+/* -------------------------------------- */
+/* ---------- Poly Line Object ---------- */
+/* -------------------------------------- */
+
+// Time to create a polyline object!
+function Polyline(color, lineWidth, points) {
+    this.color = color;
+    this.lineWidth = lineWidth;
+    this.points = points;
+}
+
+// Draws the line on the canvas
+Polyline.prototype.draw = function() {
+    let prevPoint = null;
+    for(let point of this.points) {
+        if(!prevPoint) {
+            prevPoint = point;
+        } else {
+            ctx.beginPath();
+            ctx.moveTo(prevPoint.x, prevPoint.y);
+            ctx.lineTo(point.x, point.y);
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = this.lineWidth;
+            ctx.lineCap = "round";
+            ctx.stroke();
+            prevPoint = point;
+        }
+    }
+}
+
+// Draws a line using the mouse position and stores the line for later use
+function pen(e) {
+    if(e.buttons) {
+        // if newline
+        if(!lastPoint) {
+            ctx.strokeStyle = activeColor;
+            ctx.lineWidth = penSize;
+            ctx.lineCap = "round";
+            drawings.push(currentLine);
+            lastPoint = {x: e.offsetX, y: e.offsetY};
+            currentLine = new Polyline(activeColor, penSize, [lastPoint]);
+            return;
+        }
+        // else if continuing current line
+        ctx.beginPath();
+        ctx.moveTo(lastPoint.x, lastPoint.y);
+        ctx.lineTo(e.offsetX, e.offsetY);
+        ctx.stroke();
+        lastPoint = {x: e.offsetX, y: e.offsetY};
+        currentLine.points.push(lastPoint);
+    } else {
+        lastPoint = null;
+    }
+}
 
 /* ------------------------------------------ */
 /* ---------- Straight Line Object ---------- */
@@ -187,18 +243,18 @@ function line(e) {
             let altitude = angle(currentLine.origin.x, currentLine.origin.y, e.offsetX, e.offsetY);
             if(Math.abs(altitude) < snapAngle || Math.abs((Math.abs(altitude) - 180)) < snapAngle) {
                 // ctx.lineTo(e.offsetX, lastPoint.y);
-                currentLine.offset({x: e.offsetX, y: currentLine.origin.y});
+                currentLine.offset = {x: e.offsetX, y: currentLine.origin.y};
             } else
             if(Math.abs(Math.abs(altitude) - 90) < snapAngle) {
                 // ctx.lineTo(lastPoint.x, e.offsetY);
-                currentLine.offset({x: currentLine.origin.x, y: e.offsetY});
+                currentLine.offset = {x: currentLine.origin.x, y: e.offsetY};
             } else {
                 // ctx.lineTo(e.offsetX, e.offsetY);
-                currentLine.offset({x: e.offsetX, y: e.offsetY});
+                currentLine.offset = {x: e.offsetX, y: e.offsetY};
             }
         } else {
             // ctx.lineTo(e.offsetX, e.offsetY);
-            currentLine.offset({x: e.offsetX, y: e.offsetY});
+            currentLine.offset = {x: e.offsetX, y: e.offsetY};
         }
         currentLine.draw();
     } else {
@@ -211,50 +267,6 @@ function line(e) {
     }
 }
 
-/* function line(e) {
-
-    ctx.putImageData(imageData, 0, 0);
-    let snapAngle = 10;
-
-    if(e.buttons) {
-        if(!lastPoint) {
-            lastPoint = {x: e.offsetX, y: e.offsetY};
-            return;
-        }
-        ctx.beginPath();
-        ctx.moveTo(lastPoint.x, lastPoint.y);
-        if(e.ctrlKey) {
-            let altitude = angle(lastPoint.x, lastPoint.y, e.offsetX, e.offsetY);
-            if(Math.abs(altitude) < snapAngle || Math.abs((Math.abs(altitude) - 180)) < snapAngle) {
-                ctx.lineTo(e.offsetX, lastPoint.y);
-            } else
-            if(Math.abs(Math.abs(altitude) - 90) < snapAngle) {
-                ctx.lineTo(lastPoint.x, e.offsetY);
-            } else {
-                ctx.lineTo(e.offsetX, e.offsetY);
-            }
-        } else {
-            ctx.lineTo(e.offsetX, e.offsetY);
-        }
-        ctx.strokeStyle = activeColor;
-        ctx.lineWidth = penSize;
-        ctx.lineCap = "round";
-        ctx.stroke();
-    } else {
-        if(lastPoint != null) {
-            currentLine = {type: "line", color: activeColor, lineWidth: penSize, points: []};
-            currentLine.points.push(lastPoint);
-            currentLine.points.push({x: e.offsetX, y: e.offsetY});
-            drawings.push(currentLine);
-        }
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        redrawCanvas(drawings);
-        fillTextBoxes(textBoxes);
-        imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
-        lastPoint = null;
-    }
-} */
-
 // https://stackoverflow.com/questions/9614109/how-to-calculate-an-angle-from-points
 function angle(cx, cy, ex, ey) {
     var dy = ey - cy;
@@ -264,45 +276,6 @@ function angle(cx, cy, ex, ey) {
     //if (theta < 0) theta = 360 + theta; // range [0, 360)
     return theta;
   }
-
-
-function rectangle(e) {
-    let offsetX, offsetY;
-    if(e.buttons) {
-        ctx.putImageData(imageData, 0, 0);
-        if(!lastPoint) {
-            lastPoint = {x: e.offsetX, y: e.offsetY};
-            return;
-        }
-        offsetX = e.offsetX-lastPoint.x
-        offsetY = e.offsetY-lastPoint.y;
-        if(e.ctrlKey) {
-            offsetX <= offsetY ? offsetY = offsetX : offsetX = offsetY;
-        }
-        ctx.beginPath();
-        ctx.rect(lastPoint.x, lastPoint.y, offsetX, offsetY);
-        ctx.strokeStyle = activeColor;
-        if(fillShapes) {
-            ctx.fillStyle = activeSecondaryColor;
-            ctx.fill();
-        }
-        ctx.lineWidth = penSize;
-        ctx.lineCap = "round";
-        ctx.stroke();
-    } else {
-        if(lastPoint != null) {
-            let newRectObject = new Rectangle(activeColor, fillShapes, penSize, lastPoint, {x: e.offsetX-lastPoint.x, y: e.offsetY-lastPoint.y});
-            /*currentLine = {type: "rect", color: activeColor, fill: fillShapes, lineWidth: penSize, points: []};
-            currentLine.points.push(lastPoint);
-            currentLine.points.push({x: e.offsetX-lastPoint.x, y: e.offsetY-lastPoint.y});
-            drawings.push(currentLine);*/
-            drawings.push(newRectObject);
-            imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
-        }
-        lastPoint = null;
-    }
-
-}
 
 
 /* -------------------------------------- */
@@ -347,6 +320,40 @@ Rectangle.prototype.draw = function() {
     }
     ctx.lineWidth = this.lineWidth;
     ctx.stroke();
+}
+
+function rectangle(e) {
+    let offsetX, offsetY;
+    if(e.buttons) {
+        ctx.putImageData(imageData, 0, 0);
+        if(!lastPoint) {
+            lastPoint = {x: e.offsetX, y: e.offsetY};
+            return;
+        }
+        offsetX = e.offsetX-lastPoint.x
+        offsetY = e.offsetY-lastPoint.y;
+        if(e.ctrlKey) {
+            offsetX <= offsetY ? offsetY = offsetX : offsetX = offsetY;
+        }
+        ctx.beginPath();
+        ctx.rect(lastPoint.x, lastPoint.y, offsetX, offsetY);
+        ctx.strokeStyle = activeColor;
+        if(fillShapes) {
+            ctx.fillStyle = activeSecondaryColor;
+            ctx.fill();
+        }
+        ctx.lineWidth = penSize;
+        ctx.lineCap = "round";
+        ctx.stroke();
+    } else {
+        if(lastPoint != null) {
+            let newRectObject = new Rectangle(activeColor, fillShapes, penSize, lastPoint, {x: e.offsetX-lastPoint.x, y: e.offsetY-lastPoint.y});
+            drawings.push(newRectObject);
+            imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+        }
+        lastPoint = null;
+    }
+
 }
 
 /* ------------------------------------ */
@@ -452,7 +459,7 @@ function circle(e) {
 
 }*/
 
-//creates a pointer by drawing a red dot at the mouse postion, erasing everything, redrawing all the elements, and repeating
+// Creates a pointer by drawing a red dot at the mouse postion and drawing a tail
 var secondLastPoint = null;
 function pointer(e) {
     //use snapshot to make canvas
@@ -486,33 +493,7 @@ function pointer(e) {
     ctx.stroke();
     secondLastPoint = lastPoint;
     lastPoint = {x: e.offsetX, y: e.offsetY};
-
-}
-
-// draws a line using the mouse position and stores the line for later use
-function pen(e) {
-    if(e.buttons) {
-        // if newline
-        if(!lastPoint) {
-            drawings.push(currentLine);
-            currentLine = {type: "poly", color: activeColor, lineWidth: penSize, points: []};
-            lastPoint = {x: e.offsetX, y: e.offsetY};
-            currentLine.points.push(lastPoint);
-            return;
-        }
-        // else if continuing current line
-        ctx.beginPath();
-        ctx.moveTo(lastPoint.x, lastPoint.y);
-        ctx.lineTo(e.offsetX, e.offsetY);
-        ctx.strokeStyle = activeColor;
-        ctx.lineWidth = penSize;
-        ctx.lineCap = "round";
-        ctx.stroke();
-        lastPoint = {x: e.offsetX, y: e.offsetY};
-        currentLine.points.push(lastPoint);
-    } else {
-        lastPoint = null;
-    }
+    
 }
 
 
@@ -521,9 +502,7 @@ function erase(e) {
 
     let eraserSize = penSize*4;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    redrawCanvas(drawings);
-    redrawLine(currentLine);
+    hardRefresh();
 
     if(e.buttons) {
         // if newline
@@ -830,9 +809,7 @@ function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
                 offset.x = Math.abs(origin.x - e.offsetX);
                 break;
         }
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        redrawCanvas(drawings);
-        fillTextBoxes(textBoxes);
+        hardRefresh();
         drawEditSelectors(selectedObject);
     } else {
         inMotionResize = false;
@@ -866,9 +843,7 @@ function resizeCircleFromPoint(e, ctrlPoint, selectedObject) {
                 offset.x = Math.abs(origin.x - e.offsetX);
                 break;
         }
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        redrawCanvas(drawings);
-        fillTextBoxes(textBoxes);
+        hardRefresh();
         drawEditSelectors(selectedObject);
     } else {
         inMotionResize = false;
@@ -891,9 +866,7 @@ function resizeLineFromPoint(e, ctrlPoint, selectedObject) {
                 offset.y = e.offsetY;
                 break;
         }
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        redrawCanvas(drawings);
-        fillTextBoxes(textBoxes);
+        hardRefresh();
         drawEditSelectors(selectedObject);
     } else {
         inMotionResize = false;
@@ -920,9 +893,7 @@ function moveShapeToCursor(e, selectedObject) {
             selectedObject.points[1].x = selectedObject.points[0].x + offsetX;
             selectedObject.points[1].y = selectedObject.points[0].y + offsetY;
         }
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        redrawCanvas(drawings);
-        fillTextBoxes(textBoxes);
+        hardRefresh();
         drawEditSelectors(selectedObject);
     } else {
         cursorOffsetFromOrigin = null;
@@ -947,35 +918,9 @@ function moveShape2(e) {
 
 // redraws all lines and shapes stored on the specified page
 function redrawCanvas(page) {
-    //console.log(page);
     for(let drawing of page) {
-        if(drawing.type == "line" || drawing.type == "poly") {
-            redrawLine(drawing);
-        } else if(drawing.constructor.name == 'Rectangle') { // TODO: remember this will not work with inheritance
-            drawing.draw();
-        } else if (drawing.type == "circle") {
-            redrawCircle(drawing);
-        }
-    }
-}
-
-
-function redrawLine(drawing) {
-    let lastPoint = null;
-    for(let point of drawing.points) {
-        if(!lastPoint) {
-            lastPoint = point;
-        } else {
-            ctx.beginPath();
-            ctx.moveTo(lastPoint.x, lastPoint.y);
-            ctx.lineTo(point.x, point.y);
-            ctx.strokeStyle = drawing.color;
-            //console.log("The color is " + drawing.color);
-            ctx.lineWidth = drawing.lineWidth;
-            ctx.lineCap = "round";
-            ctx.stroke();
-            lastPoint = point;
-        }
+        // TODO: integrate for undo/redo objects
+        drawing.draw();
     }
 }
 
@@ -1057,43 +1002,6 @@ function overlay() {
     }
 }
 
-/*function redrawRect(drawing) {
-    ctx.beginPath();
-    ctx.rect(drawing.points[0].x, drawing.points[0].y, drawing.points[1].x, drawing.points[1].y);
-    ctx.strokeStyle = drawing.color;
-    // HACK: bad workaround
-    if(drawing.fill) {
-        try {
-            ctx.fillStyle = secondaryColors[drawColors.indexOf(rgb2hex(drawing.color))];
-        } catch {
-            ctx.fillStyle = secondaryColors[drawColors.indexOf(drawing.color)];
-        }
-        ctx.fill();
-    }
-    ctx.lineWidth = drawing.lineWidth;
-    ctx.stroke();
-}*/
-
-/*function redrawCircle(drawing) {
-    ctx.beginPath();
-    //let radius = Math.sqrt(Math.pow(drawing.points[1].x, 2) + Math.pow(drawing.points[1].y, 2));
-    let radiusX = drawing.points[1].x;
-    let radiusY = drawing.points[1].y;
-    ctx.ellipse(drawing.points[0].x, drawing.points[0].y, radiusX, radiusY, 0, 0, 2*Math.PI);
-    ctx.strokeStyle = drawing.color;
-    if(drawing.fill) {
-        // HACK: bad workaround
-        try {
-            ctx.fillStyle = secondaryColors[drawColors.indexOf(rgb2hex(drawing.color))];
-        } catch {
-            ctx.fillStyle = secondaryColors[drawColors.indexOf(drawing.color)];
-        }
-        ctx.fill();
-    }
-    ctx.lineWidth = drawing.lineWidth;
-    ctx.stroke();
-}*/
-
 /* ---------------------------------------------- */
 /* ---------- Javascript for Page menu ---------- */
 /* ---------------------------------------------- */
@@ -1125,9 +1033,7 @@ function prevPage() {
     if(currentPage - 1 > 0) {
         drawings = pages[currentPage - 2].drawings;
         textBoxes = pages[currentPage - 2].curTextBoxes;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        redrawCanvas(drawings);
-        fillTextBoxes(textBoxes);
+        hardRefresh();
         currentPage -= 1;
     } else {
         return;
