@@ -58,27 +58,27 @@ var drawingNewShape = false;
 var imageData;
 
 // resize the canvas based on the window size and center the whiteboard menu vertically in the canvas
-function resize() {
+/* function resize() {
     ctx.canvas.width = canvas.parentElement.clientWidth;
     ctx.canvas.height = canvas.parentElement.clientHeight - 52;
     clearCanvas();
-}
+} */
 
 // remove all elements from the convas
-function clearCanvas() {
+/* function clearCanvas() {
     drawings = [];
     for (const box of textBoxes){
         box.remove();
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
-}
+} */
 
-function hardRefresh() {
+/* function hardRefresh() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     redrawCanvas(drawings);
     fillTextBoxes(textBoxes);
-}
+} */
 
 // pressing ctrl+z will remove the last drawn element on the page
 document.addEventListener('keydown', function(event) {
@@ -137,6 +137,97 @@ function move(e) {
         default:
             pen(e);
     }
+}
+
+/* --------------------------------------- */
+/* ---------- Whiteboard Object ---------- */
+/* --------------------------------------- */
+
+/* var canvas = document.getElementById("canvas");
+let ctx = canvas.getContext("2d");
+
+var lastPoint;
+var canvasFunction;
+changeCanvasFunction("pen");
+var penSize = 5;
+var textLastPoint;
+
+var pages = [];
+var currentPage = 1;
+var drawings = [];
+var textBoxes = [];
+var currentLine = null;
+var drawingNewShape = false;
+var imageData; */
+
+// Time to create a new whiteboard
+function Whiteboard(canvasId) {
+    this.canvas = document.getElementById("canvas");
+    this.ctx = this.canvas.getContext("2d");
+    
+    this.currentPage = 1;
+    this.pages = [{drawings: [], curTextBoxes: []}];
+    this.drawings = () => pages[currentPage-1].drawings; 
+    this.textBoxes = () => pages[currentPage-1].textBoxes;
+    this.currentLine = null;
+    this.drawingNewShape = false;
+    this.imageData;
+}
+
+// Loads the next page or creates a new page
+Whiteboard.prototype.nextPage = function() {
+    // TODO: this function references a HTML element out of the scope
+    // TODO: mabye should save image data after new page loads
+    let numPages = this.pages.length;
+    this.currentPage += 1;
+    if(this.currentPage <= numPages) {
+        this.hardRefresh();
+    } else {
+        this.pages.push({drawings: [], curTextBoxes: []});
+        this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+        numPages += 1;
+    }
+    document.getElementById("pageCount").textContent = (this.currentPage) + "/" + numPages;
+}
+
+// Loads the previous page if possible
+Whiteboard.prototype.prevPage = function() {
+    // TODO: this function references a HTML element out of the scope
+    // TODO: mabye should save image data after new page loads
+    let numPages = this.pages.length;
+    if(this.currentPage - 1 > 0) {
+        currentPage -= 1;
+        this.hardRefresh();
+    } else {
+        return;
+    }
+    document.getElementById("pageCount").textContent = (this.currentPage) + "/" + numPages;
+}
+
+// refreshes the screen by redrawing all items
+Whiteboard.prototype.hardRefresh = function() {
+    // TODO: this function contains references to objects and functions outside of the object
+    this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+    redrawCanvas(this.drawings);
+    fillTextBoxes(this.textBoxes);
+}
+
+// resizes the canvas size on the page
+Whiteboard.prototype.resize = function(width, height) {
+    // TODO: probably should capture new image data when the data scaling is implemented
+    this.ctx.canvas.width = width;
+    this.ctx.canvas.height = height;
+    this.clear();
+}
+
+// Removes all drawings from the current page
+Whiteboard.prototype.clear = function() {
+    this.drawings = [];
+    for (const box of this.textBoxes){
+        box.remove();
+    }
+    this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+    this.imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
 }
 
 /* -------------------------------------- */
@@ -936,7 +1027,7 @@ function overlay() {
 /* ---------- Javascript for Page menu ---------- */
 /* ---------------------------------------------- */
 
-// loads the next page or creates a new page
+/* // loads the next page or creates a new page
 function nextPage() {
     pages[currentPage - 1] = {drawings: drawings, curTextBoxes: textBoxes};
     let numPages = pages.length;
@@ -969,7 +1060,7 @@ function prevPage() {
         return;
     }
     document.getElementById("pageCount").textContent = (currentPage) + "/" + numPages;
-}
+} */
 
 
 
