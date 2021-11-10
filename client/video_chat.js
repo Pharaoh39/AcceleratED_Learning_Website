@@ -148,7 +148,6 @@ var mouseY;
 var pages = [];
 var currentPage = 1;
 var drawings = [];
-var textBoxes = [];
 var currentLine = {
     type: null,
     color: activeColor,
@@ -166,10 +165,12 @@ function resize() {
 
 // remove all elements from the convas
 function clearCanvas() {
-    drawings = [];
-    for (const box of textBoxes){
-        box.remove();
+    for (const obj of drawings){
+        if(obj.type == "textbox"){
+            obj.textBox.remove();
+        }
     }
+    drawings = [];
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
 }
@@ -181,7 +182,6 @@ document.addEventListener('keydown', function(event) {
           drawings.pop();
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           redrawCanvas(drawings);
-          fillTextBoxes(textBoxes);
       }
     }
 });
@@ -249,7 +249,6 @@ function line(e) {
         }
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
-        fillTextBoxes(textBoxes);
         imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
         lastPoint = null;
     }
@@ -401,7 +400,6 @@ function erase(e) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     redrawCanvas(drawings);
     redrawLine(currentLine);
-    fillTextBoxes(textBoxes);
 
     if(e.buttons) {
         // if newline
@@ -635,7 +633,6 @@ function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
         }
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
-        fillTextBoxes(textBoxes);
         drawEditSelectors(selectedObject);
     } else {
         inMotionResize = false;
@@ -668,7 +665,6 @@ function resizeCircleFromPoint(e, ctrlPoint, selectedObject) {
         }
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
-        fillTextBoxes(textBoxes);
         drawEditSelectors(selectedObject);
     } else {
         inMotionResize = false;
@@ -691,7 +687,6 @@ function moveShapeToCursor(e, selectedObject) {
         selectedObject.points[0].y = e.offsetY - cursorOffsetFromOrigin.y;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
-        fillTextBoxes(textBoxes);
         drawEditSelectors(selectedObject);
     } else {
         cursorOffsetFromOrigin = null;
@@ -719,7 +714,6 @@ function moveShape2(e) {
 
 // redraws all lines and shapes stored on the specified page
 function redrawCanvas(page) {
-    //console.log(page);
     for(let drawing of page) {
         if(drawing.type == "line" || drawing.type == "poly") {
             redrawLine(drawing);
@@ -727,6 +721,8 @@ function redrawCanvas(page) {
             redrawRect(drawing);
         } else if (drawing.type == "circle") {
             redrawCircle(drawing);
+        } else if (drawing.type == "textbox") {
+            fillTextBox(drawing);
         }
     }
 }
@@ -767,7 +763,6 @@ function textBox() {
 
     //Start dragging sequence
     textBox.addEventListener('mousedown', function(e) {
-        //console.log(hasClickedTextBox());
         beingDragged = true;
         textLastPoint = {x: e.offsetX, y: e.offsetY};
     }, true);
@@ -789,66 +784,69 @@ function textBox() {
     document.body.appendChild(textBox);
 
     textBox.focus();
-    textBoxes.push(textBox);
+    drawings.push({type: "textbox", textBox: textBox});
 }
 
 function hasClickedTextBox(e) {
-    console.log("inside");
-    for (let obj of textBoxes) {
-        let curDisplay = obj.style.display;
-        obj.style.display = "inline-block";
-        let bounds = obj.getBoundingClientRect();
-        obj.style.display = curDisplay;
-        console.log(bounds);
-        console.log(mouseX);
-        console.log(mouseY);
+    for (let obj of drawings) {
+        if(obj.type != "textbox"){
+            continue;
+        }
+        let curDisplay = obj.textBox.style.display;
+        obj.textBox.style.display = "inline-block";
+        let bounds = obj.textBox.getBoundingClientRect();
+        obj.textBox.style.display = curDisplay;
         if(bounds.left <= mouseX && bounds.right >= mouseX &&
             bounds.top <= mouseY && bounds.bottom >= mouseY){
                 //Hide other textboxes
-                for (let obj of textBoxes) {
-                    obj.style.display = "none";
-                }
-                obj.style.display = "inline-block";
+                hideTextBoxes();
+                obj.textBox.style.display = "inline-block";
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 redrawCanvas(drawings);
-                fillTextBoxes(textBoxes);
                 return true;
             };
     };
     return false;
 };
 
+function hideTextBoxes() {
+    for (let obj of drawings) {
+        if(obj.type == "textbox"){
+            obj.textBox.style.display = "none";
+        }
+    }
+}
+
 //Check if currently displaying a text box
 function showingTextBox(){
-    for (let obj of textBoxes) {
-        if(obj.style.display = 'inline-block'){
-            return true;
+    for (let obj of drawings) {
+        if(obj.type == "textbox"){
+            if(obj.textBox.style.display = 'inline-block'){
+                return true;
+            }
         }
     }
     return false;
 }
 
 //Draw the contents of the textboxes onto the canvas
-function fillTextBoxes(curTextBoxes) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    redrawCanvas(drawings);
+function fillTextBox(box) {
+    //ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.font="16px monospace";
     ctx.textBaseline = "top";
-    for (let obj of curTextBoxes) {
-        if(obj.style.display == 'inline-block'){
-            continue;
-        }
-        var lineHeight = parseInt(window.getComputedStyle(obj).getPropertyValue('line-height'));
-        var borderWidth = parseInt(window.getComputedStyle(obj).getPropertyValue('border-width'));
-        var lines = obj.value.split('\n');
-        for (var i = 0; i<lines.length; i++) {
-            //var curFillStyle = ctx.fillStyle;
-            //reset fillstyle
-            ctx.fillStyle = '#000000';
-            ctx.fillText(lines[i], parseInt(obj.style.left) - canvas.getBoundingClientRect().x + borderWidth, 
-            parseInt(obj.style.top) - canvas.getBoundingClientRect().y + borderWidth + i*lineHeight);
-            //ctx.fillStyle = curFillStyle;
-        }
+    if(box.textBox.style.display == 'inline-block'){
+        return;
+    }
+    var lineHeight = parseInt(window.getComputedStyle(box.textBox).getPropertyValue('line-height'));
+    var borderWidth = parseInt(window.getComputedStyle(box.textBox).getPropertyValue('border-width'));
+    var lines = box.textBox.value.split('\n');
+    for (var i = 0; i<lines.length; i++) {
+        //var curFillStyle = ctx.fillStyle;
+        //reset fillstyle
+        ctx.fillStyle = '#000000';
+        ctx.fillText(lines[i], parseInt(box.textBox.style.left) - canvas.getBoundingClientRect().x + borderWidth, 
+        parseInt(box.textBox.style.top) - canvas.getBoundingClientRect().y + borderWidth + i*lineHeight);
+        //ctx.fillStyle = curFillStyle;
     }
 }
 
@@ -901,17 +899,15 @@ function redrawCircle(drawing) {
 
 // loads the next page or creates a new page
 function nextPage() {
-    pages[currentPage - 1] = {drawings: drawings, curTextBoxes: textBoxes};
+    pages[currentPage - 1] = {drawings: drawings};
     let numPages = pages.length;
     if(currentPage + 1 <= numPages) {
         drawings = pages[currentPage].drawings;
-        textBoxes = pages[currentPage].curTextBoxes;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
-        fillTextBoxes(textBoxes);
     } else {
         //Manually clear canvas for now instead of clearCanvas() since that function removes textboxes from document
         drawings = [];
-        textBoxes = [];
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         numPages += 1;
     }
@@ -921,14 +917,12 @@ function nextPage() {
  
 // loads the previous page if possible
 function prevPage() {
-    pages[currentPage - 1] = {drawings: drawings, curTextBoxes: textBoxes};
+    pages[currentPage - 1] = {drawings: drawings};
     let numPages = pages.length;
     if(currentPage - 1 > 0) {
         drawings = pages[currentPage - 2].drawings;
-        textBoxes = pages[currentPage - 2].curTextBoxes;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         redrawCanvas(drawings);
-        fillTextBoxes(textBoxes);
         currentPage -= 1;
     } else {
         return;
@@ -1063,11 +1057,9 @@ function menuItemActive(e) {
 //Check if need to draw textBoxes onto canvas
 function changeCanvasFunction(newFunc) {
     if(canvasFunction == 'textBox' || canvasFunction == "move"){
-        for (const obj of textBoxes) {
-            //Hide text boxes
-            obj.style.display = "none";
-        }
-        fillTextBoxes(textBoxes);
+        hideTextBoxes();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        redrawCanvas(drawings);
     }
     canvasFunction = newFunc;
 }
@@ -1079,7 +1071,8 @@ function enablePen(e) {
 }
 
 function pointerMenu(e) {
-    fillTextBoxes(textBoxes);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    redrawCanvas(drawings);
     changeCanvasFunction("pointer");
     //take snapshot of current canvas
     imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
@@ -1088,7 +1081,8 @@ function pointerMenu(e) {
 }
 
 function lineDraw(e) {
-    fillTextBoxes(textBoxes);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    redrawCanvas(drawings);
     //take snapshot of current canvas
     imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
     changeCanvasFunction("line");
@@ -1115,10 +1109,9 @@ function goToPrevPage() {
 }
 
 function rectangleDraw(e) {
-    for (let obj of textBoxes) {
-        obj.style.display = "none";
-    }
-    fillTextBoxes(textBoxes);
+    hideTextBoxes();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    redrawCanvas(drawings);
     imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
     changeCanvasFunction("rect");
     canvas.style.cursor = "default";
@@ -1126,10 +1119,9 @@ function rectangleDraw(e) {
 }
 
 function circleDraw(e) {
-    for (let obj of textBoxes) {
-        obj.style.display = "none";
-    }
-    fillTextBoxes(textBoxes);
+    hideTextBoxes();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    redrawCanvas(drawings);
     imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
     changeCanvasFunction("circle");
     canvas.style.cursor = "default";
