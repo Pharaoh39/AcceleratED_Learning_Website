@@ -54,6 +54,7 @@ var currentPage = 1;
 var drawings = [];
 var textBoxes = [];
 var currentLine = null;
+var drawingNewShape = false;
 var imageData;
 
 // resize the canvas based on the window size and center the whiteboard menu vertically in the canvas
@@ -136,7 +137,81 @@ function move(e) {
     }
 }
 
+
+/* ------------------------------------------ */
+/* ---------- Straight Line Object ---------- */
+/* ------------------------------------------ */
+
+// Time to create a line object!
+function Line(color, lineWidth, origin, offset) {
+    this.color = color;
+    this.lineWidth = lineWidth;
+    this.origin = origin;
+    this.offset = offset;
+}
+
+// Checks if the given point is on the line
+Line.prototype.isWithin = function({x, y}) {
+    let tolerance = this.lineWidth + 2;
+    // calculate perpendicular distance from line
+    let distanceFromLine = Math.abs((y - this.offset.y)*this.origin.x - (x - this.offset.x)*this.origin.y + x*this.offset.y - y*this.offsfet.x) / Math.sqrt(Math.pow((y - this.offset.y), 2) + Math.pow((x - this.offset.x), 2));
+    if(distanceFromLine > tolerance) return false;
+    // calculates if the point is between the the endpoints
+    let dotProduct = (x - this.origin.x) * (this.offset.x - this.origin.x) + (y - this.origin.y) * (this.offset.y - this.origin.y);
+    if(dotProduct < 0) return false;
+    let squaredLengthBA = (this.offset.x - this.origin.x) * (this.offset.x - this.origin.x) + (this.offset.y - this.origin.y) * (this.offset.y - this.origin.y);
+    if(dotProduct > squaredLengthBA) return false;
+    return true;
+}
+
+// Draws the line on the canvas
+Line.prototype.draw = function() {
+    ctx.beginPath();
+    ctx.moveTo(this.origin.x, this.origin.y);
+    ctx.lineTo(this.offset.x, this.offset.y);
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = this.lineWidth;
+    ctx.lineCap = "round";
+    ctx.stroke();
+}
+
 function line(e) {
+    if(e.buttons) {
+        if(!drawingNewShape) {
+            currentLine = new Line(activeColor, penSize, {x: e.offsetX, y: e.offsetY}, null);
+            drawingNewShape = true;
+            return;
+        }
+        ctx.putImageData(imageData, 0, 0);
+        if(e.ctrlKey) {
+            let altitude = angle(currentLine.origin.x, currentLine.origin.y, e.offsetX, e.offsetY);
+            if(Math.abs(altitude) < snapAngle || Math.abs((Math.abs(altitude) - 180)) < snapAngle) {
+                // ctx.lineTo(e.offsetX, lastPoint.y);
+                currentLine.offset({x: e.offsetX, y: currentLine.origin.y});
+            } else
+            if(Math.abs(Math.abs(altitude) - 90) < snapAngle) {
+                // ctx.lineTo(lastPoint.x, e.offsetY);
+                currentLine.offset({x: currentLine.origin.x, y: e.offsetY});
+            } else {
+                // ctx.lineTo(e.offsetX, e.offsetY);
+                currentLine.offset({x: e.offsetX, y: e.offsetY});
+            }
+        } else {
+            // ctx.lineTo(e.offsetX, e.offsetY);
+            currentLine.offset({x: e.offsetX, y: e.offsetY});
+        }
+        currentLine.draw();
+    } else {
+        if(currentLine != null) {
+            drawingNewShape = false;
+            drawings.push(currentLine);
+            imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+        }
+        currentLine = null;
+    }
+}
+
+/* function line(e) {
 
     ctx.putImageData(imageData, 0, 0);
     let snapAngle = 10;
@@ -178,7 +253,7 @@ function line(e) {
         imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
         lastPoint = null;
     }
-}
+} */
 
 // https://stackoverflow.com/questions/9614109/how-to-calculate-an-angle-from-points
 function angle(cx, cy, ex, ey) {
@@ -312,9 +387,7 @@ Ellipse.prototype.draw = function() {
     ctx.stroke();
 }
 
-
 // lets the user draw an ellipse
-var drawingNewShape = false;
 function circle(e) {
     if(e.buttons) {
         if(!drawingNewShape) {
@@ -543,7 +616,7 @@ function hasClickedShape(e) {
 }*/
 
 // Takes the mouse position event and an line object and outputs true if the mouse position is within the line bounds
-function withinLineBounds({offsetX, offsetY}, {points}) {
+/*function withinLineBounds({offsetX, offsetY}, {points}) {
     // calculates distance from line
     let tolerance = penSize + 2;
     let distanceFromLine = Math.abs((offsetY - points[1].y)*points[0].x - (offsetX - points[1].x)*points[0].y + offsetX*points[1].y - offsetY*points[1].x) / Math.sqrt(Math.pow((offsetY - points[1].y), 2) + Math.pow((offsetX - points[1].x), 2));
@@ -554,7 +627,7 @@ function withinLineBounds({offsetX, offsetY}, {points}) {
     let squaredLengthBA = (points[1].x - points[0].x) * (points[1].x - points[0].x) + (points[1].y - points[0].y) * (points[1].y - points[0].y);
     if(dotProduct > squaredLengthBA) return false;
     return true;
-}
+}*/
 
 
 // Draws the resize nodes on the corners of the rectangle
