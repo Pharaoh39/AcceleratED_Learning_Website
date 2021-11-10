@@ -959,18 +959,22 @@ function insertImage() {
     let input = document.createElement('input');
     let imageToInsert = document.createElement('img');
     input.type = 'file';
+    input.accept="image/png, image/gif, image/jpeg";
     input.onchange = (e) => {
         imageToInsert.onload = function(){
             imageOffsetX = 0;
             imageOffsetY = 0;
-            console.log(canvas.width);
-            console.log(canvas.height);
-            let fitToCanvas = canvas.height * 0.9;
-            let fittedHeight = imageToInsert.height / (imageToInsert.height/fitToCanvas);
-            let fittedWidth = (imageToInsert.width * fittedHeight) / imageToInsert.height;
-            console.log(fitToCanvas);
-            console.log(fittedHeight);
-            console.log(fittedWidth);
+            // console.log(canvas.width);
+            // console.log(canvas.height);
+            if(imageToInsert.height >= imageToInsert.width){
+                var fittedHeight = canvas.height * 0.9;
+                var fittedWidth = (imageToInsert.width * fittedHeight) / imageToInsert.height;
+            } else {
+                var fittedWidth = canvas.width * 0.9;
+                var fittedHeight = (imageToInsert.height * fittedWidth) / imageToInsert.width;
+            }
+            // console.log(fittedHeight);
+            // console.log(fittedWidth);
             ctx.drawImage(imageToInsert,imageOffsetX,imageOffsetY, fittedWidth, fittedHeight);
             currentImage = {type: "image", img: imageToInsert, points: []};
             currentImage.points.push({x: imageOffsetX, y: imageOffsetY});
