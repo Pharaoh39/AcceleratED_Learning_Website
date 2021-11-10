@@ -126,7 +126,7 @@ function move(e) {
             circle(e);
             break;
         case "move":
-            moveShape2(e);
+            moveShape(e);
             break;
         case "erase":
             erase(e);
@@ -210,7 +210,7 @@ function Line(color, lineWidth, origin, offset) {
 Line.prototype.isWithin = function({x, y}) {
     let tolerance = this.lineWidth + 2;
     // calculate perpendicular distance from line
-    let distanceFromLine = Math.abs((y - this.offset.y)*this.origin.x - (x - this.offset.x)*this.origin.y + x*this.offset.y - y*this.offsfet.x) / Math.sqrt(Math.pow((y - this.offset.y), 2) + Math.pow((x - this.offset.x), 2));
+    let distanceFromLine = Math.abs((y - this.offset.y)*this.origin.x - (x - this.offset.x)*this.origin.y + x*this.offset.y - y*this.offset.x) / Math.sqrt(Math.pow((y - this.offset.y), 2) + Math.pow((x - this.offset.x), 2));
     if(distanceFromLine > tolerance) return false;
     // calculates if the point is between the the endpoints
     let dotProduct = (x - this.origin.x) * (this.offset.x - this.origin.x) + (y - this.origin.y) * (this.offset.y - this.origin.y);
@@ -420,45 +420,6 @@ function circle(e) {
     }
 }
 
-
-// lets the user draw an ellipse
-/*function circle(e) {
-    let radiusX, radiusY;
-    if(e.buttons) {
-        ctx.putImageData(imageData, 0, 0);
-        if(!lastPoint) {
-            lastPoint = {x: e.offsetX, y: e.offsetY};
-            return;
-        }
-        ctx.beginPath();
-        radiusX = Math.abs(lastPoint.x - e.offsetX);
-        radiusY = Math.abs(lastPoint.y - e.offsetY);
-        if(e.ctrlKey) {
-            radiusX <= radiusY ? radiusY = radiusX : radiusX = radiusY;
-        }
-        ctx.ellipse(lastPoint.x, lastPoint.y, radiusX, radiusY, 0, 0, 2*Math.PI);
-        ctx.strokeStyle = activeColor;
-        ctx.lineWidth = penSize;
-        if(fillShapes) {
-            ctx.fillStyle = activeSecondaryColor;
-            ctx.fill();
-        }
-        ctx.stroke();
-    } else {
-        if(lastPoint != null) {
-            let radiusX = Math.abs(lastPoint.x - e.offsetX);
-            let radiusY = Math.abs(lastPoint.y - e.offsetY);
-            currentLine = {type: "circle", color: activeColor, fill: fillShapes, lineWidth: penSize, points: []};
-            currentLine.points.push(lastPoint);
-            currentLine.points.push({x: radiusX, y: radiusY});
-            drawings.push(currentLine);
-            imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
-        }
-        lastPoint = null;
-    }
-
-}*/
-
 // Creates a pointer by drawing a red dot at the mouse postion and drawing a tail
 var secondLastPoint = null;
 function pointer(e) {
@@ -548,20 +509,12 @@ function erase(e) {
 //  - selection border should take into account line thickness of the shapes
 
 
-// Returns with object the user clicks on if they clicked on an object (an ellipse or )
+// Returns with topmost object the user clicks on if they clicked on an object (an ellipse or )
 function hasClickedShape(e) {
     if(e.buttons) {
         for(var i = drawings.length - 1; i >= 0; i--) {
             let object = drawings[i];
-            if(object.constructor.name == 'Rectangle' && object.isWithin({x: e.offsetX, x: e.offsetY})) {
-                selectObjectLayer = i;
-                return object;
-            } else
-            if(object.type == "circle" && withinEllipseBounds(e, object)) {
-                selectObjectLayer = i;
-                return object;
-            } else
-            if(object.type == "line" && withinLineBounds(e, object)) {
+            if(object.isWithin({x: e.offsetX, y: e.offsetY})) {
                 selectObjectLayer = i;
                 return object;
             }
@@ -570,64 +523,26 @@ function hasClickedShape(e) {
     }
 }
 
-// Takes the mouse position event and a rectangle object and outputs true if the mouse position is within the ellipse bounds
-/*function withinRectangleBounds({offsetX, offsetY}, {points}) {
-    // check within x bounds of the rectangle
-    if(points[1].x > 0) {
-        if(points[0].x > offsetX || (points[0].x + points[1].x) < offsetX) return false;
-    } else {
-        if(points[0].x < offsetX || (points[0].x + points[1].x) > offsetX) return false;
-    }
-    // check within y bounds of the rectangle
-    if(points[1].y > 0) {
-        if(points[0].y > offsetY || (points[0].y + points[1].y) < offsetY) return false;
-    } else {
-        if(points[0].y < offsetY || (points[0].y + points[1].y) > offsetY) return false;
-    }
-    return true;
-}*/
-
-// Takes the mouse position event and an ellipse object and outputs true if the mouse position is within the ellipse bounds
-/*function withinEllipseBounds({offsetX, offsetY}, {points}) {
-    let multiplier = Math.pow(points[1].x, 2) * Math.pow(points[1].y, 2);
-    let ellipleCalculation = Math.pow(points[1].y, 2) * Math.pow(offsetX - points[0].x, 2) + Math.pow(points[1].x, 2) * Math.pow(offsetY - points[0].y, 2);
-    return ellipleCalculation <= multiplier ? true : false;
-}*/
-
-// Takes the mouse position event and an line object and outputs true if the mouse position is within the line bounds
-/*function withinLineBounds({offsetX, offsetY}, {points}) {
-    // calculates distance from line
-    let tolerance = penSize + 2;
-    let distanceFromLine = Math.abs((offsetY - points[1].y)*points[0].x - (offsetX - points[1].x)*points[0].y + offsetX*points[1].y - offsetY*points[1].x) / Math.sqrt(Math.pow((offsetY - points[1].y), 2) + Math.pow((offsetX - points[1].x), 2));
-    if(distanceFromLine > tolerance) return false;
-    // calculates if between the two points
-    let dotProduct = (offsetX - points[0].x) * (points[1].x - points[0].x) + (offsetY - points[0].y) * (points[1].y - points[0].y);
-    if(dotProduct < 0) return false;
-    let squaredLengthBA = (points[1].x - points[0].x) * (points[1].x - points[0].x) + (points[1].y - points[0].y) * (points[1].y - points[0].y);
-    if(dotProduct > squaredLengthBA) return false;
-    return true;
-}*/
-
 
 // Draws the resize nodes on the corners of the rectangle
 function drawEditSelectors(selectedObject) {
     
     let origin, offset, editPoints;
 
-    if(selectedObject.type == "circle") {
-        origin = {x: selectedObject.points[0].x-selectedObject.points[1].x, y: selectedObject.points[0].y-selectedObject.points[1].y};
-        offset = {x: selectedObject.points[1].x*2, y: selectedObject.points[1].y*2};
-    } else if(selectedObject.type == "rect") {
-        origin = {x: selectedObject.points[0].x, y: selectedObject.points[0].y};
-        offset = {x: selectedObject.points[1].x, y: selectedObject.points[1].y};
-    } else if(selectObject.type == "line") {
-        origin = {x: selectedObject.points[0].x, y: selectedObject.points[0].y};
-        offset = {x: selectedObject.points[1].x-selectedObject.points[0].x, y: selectedObject.points[1].y-selectedObject.points[0].y};
+    if(selectedObject.constructor.name == "Ellipse") {
+        origin = {x: selectedObject.origin.x-selectedObject.radius.x, y: selectedObject.origin.y-selectedObject.radius.y};
+        offset = {x: selectedObject.radius.x*2, y: selectedObject.radius.y*2};
+    } else if(selectedObject.constructor.name == "Rectangle") {
+        origin = {x: selectedObject.origin.x, y: selectedObject.origin.y};
+        offset = {x: selectedObject.offset.x, y: selectedObject.offset.y};
+    } else if(selectedObject.constructor.name == "Line") {
+        origin = {x: selectedObject.origin.x, y: selectedObject.origin.y};
+        offset = {x: selectedObject.offset.x-selectedObject.origin.x, y: selectedObject.offset.y-selectedObject.origin.y};
     }
 
     let selectorRadius = 5;
     let borderRadius = selectedObject.lineWidth;
-    if(selectObject.type == "line") {
+    if(selectedObject.constructor.name == "Line") {
         editPoints = [
             {x: origin.x, y: origin.y},
             {x: origin.x+offset.x, y: origin.y+offset.y},
@@ -669,19 +584,19 @@ function changeIcon(e, selectedObject) {
     
     let origin, offset, editPoints;
 
-    if(selectedObject.type == "circle") {
-        origin = {x: selectedObject.points[0].x-selectedObject.points[1].x, y: selectedObject.points[0].y-selectedObject.points[1].y};
-        offset = {x: selectedObject.points[1].x*2, y: selectedObject.points[1].y*2};
-    } else if(selectedObject.type == "rect") {
-        origin = {x: selectedObject.points[0].x, y: selectedObject.points[0].y};
-        offset = {x: selectedObject.points[1].x, y: selectedObject.points[1].y};
-    } else if(selectObject.type == "line") {
-        origin = {x: selectedObject.points[0].x, y: selectedObject.points[0].y};
-        offset = {x: Math.abs(selectedObject.points[1].x-selectedObject.points[0].x), y: Math.abs(selectedObject.points[1].y-selectedObject.points[0].y)};
+    if(selectedObject.constructor.name == "Ellipse") {
+        origin = {x: selectedObject.origin.x-selectedObject.radius.x, y: selectedObject.origin.y-selectedObject.radius.y};
+        offset = {x: selectedObject.radius.x*2, y: selectedObject.radius.y*2};
+    } else if(selectedObject.constructor.name == "Rectangle") {
+        origin = {x: selectedObject.origin.x, y: selectedObject.origin.y};
+        offset = {x: selectedObject.offset.x, y: selectedObject.offset.y};
+    } else if(selectedObject.constructor.name == "Line") {
+        origin = {x: selectedObject.origin.x, y: selectedObject.origin.y};
+        offset = {x: Math.abs(selectedObject.offset.x-selectedObject.origin.x), y: Math.abs(selectedObject.offset.y-selectedObject.origin.y)};
     }
 
     let selectBound = 8;
-    if(selectedObject.type == "line") {
+    if(selectedObject.constructor.name == "Line") {
         editPoints = [
             {name: "top-left", cursor: "nwse-resize", x: origin.x, y: origin.y},
             {name: "btm-right", cursor: "nwse-resize", x: origin.x+offset.x, y: origin.y+offset.y},
@@ -735,15 +650,16 @@ var ctrlPointInUse = null;
 var inMotionResize = false;
 function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
 
-    if(selectedObject.type == "circle") {
+    if(selectedObject.constructor.name == "Ellipse") {
         resizeCircleFromPoint(e, ctrlPoint, selectedObject);
         return;
-    } else if(selectedObject.type == "line") {
+    } else if(selectedObject.constructor.name == "Line") {
         resizeLineFromPoint(e, ctrlPoint, selectedObject);
         return;
     }
 
-    const [origin, offset] = selectedObject.points;
+    const origin = selectedObject.origin;
+    const offset = selectedObject.offset;
 
     if(e.buttons) {
         if(!inMotionResize) inMotionResize = true;
@@ -819,7 +735,8 @@ function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
 // resizes the ellipse from one of the control points
 function resizeCircleFromPoint(e, ctrlPoint, selectedObject) {
 
-    const [origin, offset] = selectedObject.points;
+    const origin = selectedObject.origin;
+    const offset = selectedObject.radius;
 
     if(e.buttons) {
         if(!inMotionResize) inMotionResize = true;
@@ -852,7 +769,8 @@ function resizeCircleFromPoint(e, ctrlPoint, selectedObject) {
 
 function resizeLineFromPoint(e, ctrlPoint, selectedObject) {
 
-    let [origin, offset] = selectedObject.points;
+    const origin = selectedObject.origin;
+    const offset = selectedObject.offset;
 
     if(e.buttons) {
         if(!inMotionResize) inMotionResize = true;
@@ -881,17 +799,30 @@ function moveShapeToCursor(e, selectedObject) {
 
     if(e.buttons) {
         if(cursorOffsetFromOrigin == null) {
-            cursorOffsetFromOrigin = {x: e.offsetX-selectedObject.points[0].x, y: e.offsetY-selectedObject.points[0].y};
+            cursorOffsetFromOrigin = {x: e.offsetX-selectedObject.origin.x, y: e.offsetY-selectedObject.origin.y};
             inMotion = true;
             return;
         }
-        let offsetX = selectedObject.points[1].x-selectedObject.points[0].x;
-        let offsetY = selectedObject.points[1].y-selectedObject.points[0].y;
-        selectedObject.points[0].x = e.offsetX - cursorOffsetFromOrigin.x;
-        selectedObject.points[0].y = e.offsetY - cursorOffsetFromOrigin.y;
-        if(selectedObject.type == "line") {
-            selectedObject.points[1].x = selectedObject.points[0].x + offsetX;
-            selectedObject.points[1].y = selectedObject.points[0].y + offsetY;
+        let offsetX, offsetY;
+        if(selectedObject.constructor.name == "Rectangle") {
+            offsetX = selectedObject.offset.x-selectedObject.origin.x;
+            offsetY = selectedObject.offset.y-selectedObject.origin.y;
+            selectedObject.origin.x = e.offsetX - cursorOffsetFromOrigin.x;
+            selectedObject.origin.y = e.offsetY - cursorOffsetFromOrigin.y;
+        } else
+        if(selectedObject.constructor.name == "Ellipse") {
+            offsetX = selectedObject.radius.x-selectedObject.origin.x;
+            offsetY = selectedObject.radius.y-selectedObject.origin.y;
+            selectedObject.origin.x = e.offsetX - cursorOffsetFromOrigin.x;
+            selectedObject.origin.y = e.offsetY - cursorOffsetFromOrigin.y;
+        } else
+        if(selectedObject.constructor.name == "Line") {
+            offsetX = selectedObject.offset.x-selectedObject.origin.x;
+            offsetY = selectedObject.offset.y-selectedObject.origin.y;
+            selectedObject.origin.x = e.offsetX - cursorOffsetFromOrigin.x;
+            selectedObject.origin.y = e.offsetY - cursorOffsetFromOrigin.y;
+            selectedObject.offset.x = selectedObject.origin.x + offsetX;
+            selectedObject.offset.y = selectedObject.origin.y + offsetY;
         }
         hardRefresh();
         drawEditSelectors(selectedObject);
@@ -905,8 +836,7 @@ function moveShapeToCursor(e, selectedObject) {
 var selectObjectLayer = null;
 var prevObjectLayer = null;
 var selectObject = null;
-function moveShape2(e) {
-    var newSelect = true;
+function moveShape(e) {
     var selectedObject = hasClickedShape(e);
     if((selectObject == null || prevObjectLayer != selectObjectLayer) && !inMotion && !inMotionResize) {
         prevObjectLayer = selectObjectLayer;
