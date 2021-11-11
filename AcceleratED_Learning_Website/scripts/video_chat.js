@@ -116,30 +116,31 @@ function move(e) {
 
 // Time to create a new whiteboard
 function Whiteboard(canvasId) {
+    // store the canvas information
     this.canvas = document.getElementById(canvasId);
     this.ctx = this.canvas.getContext("2d");
-    
+    // store the pages information
     this.currentPage = 1;
     this.pages = [{drawings: [], curTextBoxes: []}];
+    this.imageData;
+    // Store the current operation information
     this.currentLine = null;
     this.drawingNewShape = false;
-    this.imageData;
-
-    this.penSize = 2;
     this.textLastPoint;
     this.canvasFunction;
     this.lastPoint;
     this.secondLastPoint;
-
+    // store the object selection information
     this.selectObejctLayer;
     this.prevObjectLayer;
     this.selectObject;
-
+    // store the object movement and resizing information
     this.inMotion;
     this.cursorOffsetFromOrigin;
     this.ctrlPointInUse;
     this.inMotionResize = false;
-
+    // store th active style infomation
+    this.penSize = 2;
     this.activeColor;
     this.activeSecondaryColor;
     this.fillShapes = true;
@@ -946,6 +947,9 @@ Ellipse.prototype.drawEditSelectors = function (wbl) {
     }
 }
 
+/* ------------------------------------ */
+/* ---------- Textbox Object ---------- */
+/* ------------------------------------ */
 // HACK: textbox functions not converted to object functins
 
 //Creates text boxes which can be typed into and dragged around
