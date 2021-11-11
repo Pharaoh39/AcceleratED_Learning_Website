@@ -78,31 +78,31 @@ function move(e) {
     if(e.target.id != "canvas") return;
     switch(wb.canvasFunction) {
         case "pen":
-            pen(e);
+            wb.pen(e);
             break;
         case "pointer":
-            pointer(e);
+            wb.pointer(e);
             break;
         case "line":
-            line(e);
+            wb.line(e);
             break;
         case "rect":
-            rectangle(e);
+            wb.rectangle(e);
             break;
         case "circle":
-            circle(e);
+            wb.circle(e);
             break;
         case "move":
             moveShape(e);
             break;
         case "erase":
-            erase(e);
+            wb.erase(e);
         case "textBox":
             break;
         case "overlay":
             break;
         default:
-            pen(e);
+            wb.pen(e);
     }
 }
 
@@ -110,26 +110,9 @@ function move(e) {
 /* ---------- Whiteboard Object ---------- */
 /* --------------------------------------- */
 
-/* var canvas = document.getElementById("canvas");
-let ctx = canvas.getContext("2d");
-
-var lastPoint;
-var canvasFunction;
-changeCanvasFunction("pen");
-var penSize = 5;
-var textLastPoint;
-
-var pages = [];
-var currentPage = 1;
-var drawings = [];
-var textBoxes = [];
-var currentLine = null;
-var drawingNewShape = false;
-var imageData; */
-
 // Time to create a new whiteboard
 function Whiteboard(canvasId) {
-    this.canvas = document.getElementById("canvas");
+    this.canvas = document.getElementById(canvasId);
     this.ctx = this.canvas.getContext("2d");
     
     this.currentPage = 1;
@@ -208,10 +191,11 @@ Whiteboard.prototype.clear = function() {
     this.imageData = this.ctx.getImageData(0,0,this.canvas.width,this.canvas.height);
 }
 
+// Draws all of the drawings on the current page
 Whiteboard.prototype.drawAllDrawings = function () {
     for(let drawing of this.drawings()) {
         // TODO: integrate for undo/redo objects
-        drawing.draw();
+        drawing.draw(this);
     }
 }
 
@@ -227,91 +211,49 @@ function Polyline(color, lineWidth, points) {
 }
 
 // Draws the line on the canvas
-Polyline.prototype.draw = function() {
+Polyline.prototype.draw = function(wbl) {
     let prevPoint = null;
     for(let point of this.points) {
         if(!prevPoint) {
             prevPoint = point;
         } else {
-            wb.ctx.beginPath();
-            wb.ctx.moveTo(prevPoint.x, prevPoint.y);
-            wb.ctx.lineTo(point.x, point.y);
-            wb.ctx.strokeStyle = this.color;
-            wb.ctx.lineWidth = this.lineWidth;
-            wb.ctx.lineCap = "round";
-            wb.ctx.stroke();
+            wbl.ctx.beginPath();
+            wbl.ctx.moveTo(prevPoint.x, prevPoint.y);
+            wbl.ctx.lineTo(point.x, point.y);
+            wbl.ctx.strokeStyle = this.color;
+            wbl.ctx.lineWidth = this.lineWidth;
+            wbl.ctx.lineCap = "round";
+            wbl.ctx.stroke();
             prevPoint = point;
         }
     }
 }
 
-/* function line(e) {
-    if(e.buttons) {
-        if(!wb.drawingNewShape) {
-            wb.currentLine = new Line(activeColor, wb.penSize, {x: e.offsetX, y: e.offsetY}, null);
-            wb.drawingNewShape = true;
-            return;
-        }
-        wb.ctx.putImageData(wb.imageData, 0, 0);
-        wb.currentLine.offset = {x: e.offsetX, y: e.offsetY};
-        wb.currentLine.draw();
-    } else {
-        if(wb.currentLine != null) {
-            wb.drawingNewShape = false;
-            wb.drawings().push(wb.currentLine);
-            wb.imageData = wb.ctx.getImageData(0,0,wb.canvas.width,wb.canvas.height);
-        }
-        wb.currentLine = null;
-    }
-} */
-
 // Draws a line using the mouse position and stores the line for later use
-function pen(e) {
+Whiteboard.prototype.pen = function (e) {
+    // TODO: organize this like the other ones
     if(e.buttons) {
         // if newline
-        if(!wb.lastPoint) {
-            wb.ctx.strokeStyle = activeColor;
-            wb.ctx.lineWidth = wb.penSize;
-            wb.ctx.lineCap = "round";
-            wb.drawings().push(wb.currentLine);
-            wb.lastPoint = {x: e.offsetX, y: e.offsetY};
-            wb.currentLine = new Polyline(activeColor, wb.penSize, [wb.lastPoint]);
+        if(!this.lastPoint) {
+            this.ctx.strokeStyle = activeColor;
+            this.ctx.lineWidth = this.penSize;
+            this.ctx.lineCap = "round";
+            this.drawings().push(this.currentLine);
+            this.lastPoint = {x: e.offsetX, y: e.offsetY};
+            this.currentLine = new Polyline(activeColor, this.penSize, [this.lastPoint]);
             return;
         }
         // else if continuing current line
-        wb.ctx.beginPath();
-        wb.ctx.moveTo(wb.lastPoint.x, wb.lastPoint.y);
-        wb.ctx.lineTo(e.offsetX, e.offsetY);
-        wb.ctx.stroke();
-        wb.lastPoint = {x: e.offsetX, y: e.offsetY};
-        wb.currentLine.points.push(wb.lastPoint);
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.lastPoint.x, this.lastPoint.y);
+        this.ctx.lineTo(e.offsetX, e.offsetY);
+        this.ctx.stroke();
+        this.lastPoint = {x: e.offsetX, y: e.offsetY};
+        this.currentLine.points.push(this.lastPoint);
     } else {
-        wb.lastPoint = null;
+        this.lastPoint = null;
     }
 }
-/* function pen(e) {
-    if(e.buttons) {
-        // if newline
-        if(!wb.lastPoint) {
-            wb.ctx.strokeStyle = activeColor;
-            wb.ctx.lineWidth = wb.penSize;
-            wb.ctx.lineCap = "round";
-            wb.drawings().push(wb.currentLine);
-            wb.lastPoint = {x: e.offsetX, y: e.offsetY};
-            wb.currentLine = new Polyline(activeColor, wb.penSize, [wb.lastPoint]);
-            return;
-        }
-        // else if continuing current line
-        wb.ctx.beginPath();
-        wb.ctx.moveTo(wb.lastPoint.x, wb.lastPoint.y);
-        wb.ctx.lineTo(e.offsetX, e.offsetY);
-        wb.ctx.stroke();
-        wb.lastPoint = {x: e.offsetX, y: e.offsetY};
-        wb.currentLine.points.push(wb.lastPoint);
-    } else {
-        wb.lastPoint = null;
-    }
-} */
 
 /* ------------------------------------------ */
 /* ---------- Straight Line Object ---------- */
@@ -340,49 +282,71 @@ Line.prototype.isWithin = function({x, y}) {
 }
 
 // Draws the line on the canvas
-Line.prototype.draw = function() {
-    wb.ctx.beginPath();
-    wb.ctx.moveTo(this.origin.x, this.origin.y);
-    wb.ctx.lineTo(this.offset.x, this.offset.y);
-    wb.ctx.strokeStyle = this.color;
-    wb.ctx.lineWidth = this.lineWidth;
-    wb.ctx.lineCap = "round";
-    wb.ctx.stroke();
+Line.prototype.draw = function(wbl) {
+    wbl.ctx.beginPath();
+    wbl.ctx.moveTo(this.origin.x, this.origin.y);
+    wbl.ctx.lineTo(this.offset.x, this.offset.y);
+    wbl.ctx.strokeStyle = this.color;
+    wbl.ctx.lineWidth = this.lineWidth;
+    wbl.ctx.lineCap = "round";
+    wbl.ctx.stroke();
 }
 
-function line(e) {
+// Draws the control points and rectangle around the line to indicate it is selected
+Line.prototype.drawEditSelectors = function (wbl) {
+
+    let selectorRadius = 5;
+    let editPoints = [
+        {x: this.origin.x, y: this.origin.y},
+        {x: this.offset.x, y: this.offset.y},
+    ];
+
+    wbl.ctx.strokeStyle = "black";
+    wbl.ctx.fillStyle = "grey";
+    wbl.ctx.lineWidth = 1;
+
+    wbl.ctx.beginPath();
+    wbl.ctx.rect(this.origin.x, this.origin.y, this.offset.x-this.origin.x, this.offset.y-this.origin.y);
+    wbl.ctx.stroke();
+
+    for(let node of editPoints) {
+        wbl.ctx.beginPath();
+        wbl.ctx.arc(node.x, node.y, selectorRadius, 0, 2*Math.PI);
+        wbl.ctx.fill();
+        wbl.ctx.stroke();
+    }
+}
+
+// This function is called while the user is drawing the line
+Whiteboard.prototype.line = function (e) {
     if(e.buttons) {
-        if(!wb.drawingNewShape) {
-            wb.currentLine = new Line(activeColor, wb.penSize, {x: e.offsetX, y: e.offsetY}, null);
-            wb.drawingNewShape = true;
+        if(!this.drawingNewShape) {
+            this.currentLine = new Line(activeColor, this.penSize, {x: e.offsetX, y: e.offsetY}, null);
+            this.drawingNewShape = true;
             return;
         }
-        wb.ctx.putImageData(wb.imageData, 0, 0);
+        this.ctx.putImageData(this.imageData, 0, 0);
         if(e.ctrlKey) {
-            let altitude = angle(wb.currentLine.origin.x, wb.currentLine.origin.y, e.offsetX, e.offsetY);
+            let altitude = angle(this.currentLine.origin.x, this.currentLine.origin.y, e.offsetX, e.offsetY);
             if(Math.abs(altitude) < snapAngle || Math.abs((Math.abs(altitude) - 180)) < snapAngle) {
-                // ctx.lineTo(e.offsetX, lastPoint.y);
-                wb.currentLine.offset = {x: e.offsetX, y: wb.currentLine.origin.y};
+                this.currentLine.offset = {x: e.offsetX, y: this.currentLine.origin.y};
             } else
             if(Math.abs(Math.abs(altitude) - 90) < snapAngle) {
-                // ctx.lineTo(lastPoint.x, e.offsetY);
-                wb.currentLine.offset = {x: wb.currentLine.origin.x, y: e.offsetY};
+                this.currentLine.offset = {x: this.currentLine.origin.x, y: e.offsetY};
             } else {
-                // ctx.lineTo(e.offsetX, e.offsetY);
-                wb.currentLine.offset = {x: e.offsetX, y: e.offsetY};
+                this.currentLine.offset = {x: e.offsetX, y: e.offsetY};
             }
         } else {
-            // ctx.lineTo(e.offsetX, e.offsetY);
-            wb.currentLine.offset = {x: e.offsetX, y: e.offsetY};
+            this.currentLine.offset = {x: e.offsetX, y: e.offsetY};
         }
-        wb.currentLine.draw();
+        this.currentLine.draw(this);
     } else {
-        if(wb.currentLine != null) {
-            wb.drawingNewShape = false;
-            wb.drawings().push(wb.currentLine);
-            wb.imageData = wb.ctx.getImageData(0,0,wb.canvas.width,wb.canvas.height);
+        if(this.currentLine != null) {
+            this.drawingNewShape = false;
+            this.drawings().push(this.currentLine);
+            this.imageData = this.ctx.getImageData(0,0,this.canvas.width,this.canvas.height);
         }
-        wb.currentLine = null;
+        this.currentLine = null;
     }
 }
 
@@ -424,54 +388,92 @@ Rectangle.prototype.isWithin = function ({x, y}) {
 }
 
 // Draws the rectangle on the canvas
-Rectangle.prototype.draw = function() {
-    wb.ctx.beginPath();
-    wb.ctx.rect(this.origin.x, this.origin.y, this.offset.x, this.offset.y);
-    wb.ctx.strokeStyle = this.color;
+Rectangle.prototype.draw = function(wbl) {
+    wbl.ctx.beginPath();
+    wbl.ctx.rect(this.origin.x, this.origin.y, this.offset.x, this.offset.y);
+    wbl.ctx.strokeStyle = this.color;
     if(this.fill) {
         // HACK: this should really be done better
         try {
-            wb.ctx.fillStyle = secondaryColors[drawColors.indexOf(rgb2hex(this.color))];
+            wbl.ctx.fillStyle = secondaryColors[drawColors.indexOf(rgb2hex(this.color))];
         } catch {
-            wb.ctx.fillStyle = secondaryColors[drawColors.indexOf(this.color)];
+            wbl.ctx.fillStyle = secondaryColors[drawColors.indexOf(this.color)];
         }
-        wb.ctx.fill();
+        wbl.ctx.fill();
     }
-    wb.ctx.lineWidth = this.lineWidth;
-    wb.ctx.stroke();
+    wbl.ctx.lineWidth = this.lineWidth;
+    wbl.ctx.stroke();
 }
 
-function rectangle(e) {
+// Draws the control points and rectangle around the shape to indicate it is active
+// TODO: split into general and ungeneral points
+Rectangle.prototype.drawEditSelectors = function (wbl) {
+    
+    let origin, offset, editPoints;
+
+    origin = {x: this.origin.x, y: this.origin.y};
+    offset = {x: this.offset.x, y: this.offset.y};
+
+    let selectorRadius = 5;
+    editPoints = [
+        {x: origin.x, y: origin.y},
+        {x: origin.x+offset.x, y: origin.y},
+        {x: origin.x+offset.x/2, y: origin.y},
+        {x: origin.x, y: origin.y+offset.y},
+        {x: origin.x+offset.x, y: origin.y+offset.y},
+        {x: origin.x+offset.x/2, y: origin.y+offset.y},
+        {x: origin.x, y: origin.y+offset.y/2},
+        {x: origin.x+offset.x, y: origin.y+offset.y/2},
+    ];
+    
+
+    wbl.ctx.strokeStyle = "black";
+    wbl.ctx.fillStyle = "grey";
+    wbl.ctx.lineWidth = 1;
+
+    wbl.ctx.beginPath();
+    wbl.ctx.rect(origin.x, origin.y, offset.x, offset.y);
+    wbl.ctx.stroke();
+
+    for(let node of editPoints) {
+        wbl.ctx.beginPath();
+        wbl.ctx.arc(node.x, node.y, selectorRadius, 0, 2*Math.PI);
+        wbl.ctx.fill();
+        wbl.ctx.stroke();
+    }
+}
+
+Whiteboard.prototype.rectangle = function (e) {
     // TODO: make fill variable into object
     let offsetX, offsetY;
     if(e.buttons) {
-        wb.ctx.putImageData(wb.imageData, 0, 0);
-        if(!wb.lastPoint) {
-            wb.lastPoint = {x: e.offsetX, y: e.offsetY};
+        this.ctx.putImageData(this.imageData, 0, 0);
+        if(!this.lastPoint) {
+            this.lastPoint = {x: e.offsetX, y: e.offsetY};
             return;
         }
-        offsetX = e.offsetX-wb.lastPoint.x
-        offsetY = e.offsetY-wb.lastPoint.y;
+        offsetX = e.offsetX-this.lastPoint.x
+        offsetY = e.offsetY-this.lastPoint.y;
         if(e.ctrlKey) {
             offsetX <= offsetY ? offsetY = offsetX : offsetX = offsetY;
         }
-        wb.ctx.beginPath();
-        wb.ctx.rect(wb.lastPoint.x, wb.lastPoint.y, offsetX, offsetY);
-        wb.ctx.strokeStyle = activeColor;
+        this.ctx.beginPath();
+        this.ctx.rect(this.lastPoint.x, this.lastPoint.y, offsetX, offsetY);
+        this.ctx.strokeStyle = activeColor;
         if(fillShapes) {
-            wb.ctx.fillStyle = activeSecondaryColor;
-            wb.ctx.fill();
+            this.ctx.fillStyle = activeSecondaryColor;
+            this.ctx.fill();
         }
-        wb.ctx.lineWidth = wb.penSize;
-        wb.ctx.lineCap = "round";
-        wb.ctx.stroke();
+        this.ctx.lineWidth = this.penSize;
+        this.ctx.lineCap = "round";
+        this.ctx.stroke();
     } else {
-        if(wb.lastPoint != null) {
-            let newRectObject = new Rectangle(activeColor, fillShapes, wb.penSize, wb.lastPoint, {x: e.offsetX-wb.lastPoint.x, y: e.offsetY-wb.lastPoint.y});
-            wb.drawings().push(newRectObject);
-            wb.imageData = wb.ctx.getImageData(0,0,wb.canvas.width,wb.canvas.height);
+        if(this.lastPoint != null) {
+            let newRectObject = new Rectangle(activeColor, fillShapes, this.penSize, this.lastPoint, {x: e.offsetX-this.lastPoint.x, y: e.offsetY-this.lastPoint.y});
+            this.drawings().push(newRectObject);
+            this.imageData = this.ctx.getImageData(0,0,this.canvas.width,this.canvas.height);
         }
-        wb.lastPoint = null;
+        this.lastPoint = null;
     }
 
 }
@@ -497,124 +499,163 @@ Ellipse.prototype.isWithin = function({x, y}) {
 }
 
 // Draws the ellipse on the canvas
-Ellipse.prototype.draw = function() {
-    wb.ctx.beginPath();
-    wb.ctx.ellipse(this.origin.x, this.origin.y, this.radius.x, this.radius.y, 0, 0, 2*Math.PI);
-    wb.ctx.strokeStyle = this.color;
+Ellipse.prototype.draw = function(wbl) {
+    wbl.ctx.beginPath();
+    wbl.ctx.ellipse(this.origin.x, this.origin.y, this.radius.x, this.radius.y, 0, 0, 2*Math.PI);
+    wbl.ctx.strokeStyle = this.color;
     if(this.fill) {
         // HACK: this should really be done better
         try {
-            wb.ctx.fillStyle = secondaryColors[drawColors.indexOf(rgb2hex(this.color))];
+            wbl.ctx.fillStyle = secondaryColors[drawColors.indexOf(rgb2hex(this.color))];
         } catch {
-            wb.ctx.fillStyle = secondaryColors[drawColors.indexOf(this.color)];
+            wbl.ctx.fillStyle = secondaryColors[drawColors.indexOf(this.color)];
         }
-        wb.ctx.fill();
+        wbl.ctx.fill();
     }
-    wb.ctx.lineWidth = this.lineWidth;
-    wb.ctx.stroke();
+    wbl.ctx.lineWidth = this.lineWidth;
+    wbl.ctx.stroke();
+}
+
+
+Ellipse.prototype.drawEditSelectors = function (wbl) {
+    
+    let origin, offset, editPoints;
+
+    origin = {x: this.origin.x-this.radius.x, y: this.origin.y-this.radius.y};
+    offset = {x: this.radius.x*2, y: this.radius.y*2};
+
+    let selectorRadius = 5;
+    editPoints = [
+        {x: origin.x, y: origin.y},
+        {x: origin.x+offset.x, y: origin.y},
+        {x: origin.x+offset.x/2, y: origin.y},
+        {x: origin.x, y: origin.y+offset.y},
+        {x: origin.x+offset.x, y: origin.y+offset.y},
+        {x: origin.x+offset.x/2, y: origin.y+offset.y},
+        {x: origin.x, y: origin.y+offset.y/2},
+        {x: origin.x+offset.x, y: origin.y+offset.y/2},
+    ];
+
+    wbl.ctx.strokeStyle = "black";
+    wbl.ctx.fillStyle = "grey";
+    wbl.ctx.lineWidth = 1;
+
+    wbl.ctx.beginPath();
+    wbl.ctx.rect(origin.x, origin.y, offset.x, offset.y);
+    wbl.ctx.stroke();
+
+    for(let node of editPoints) {
+        wbl.ctx.beginPath();
+        wbl.ctx.arc(node.x, node.y, selectorRadius, 0, 2*Math.PI);
+        wbl.ctx.fill();
+        wbl.ctx.stroke();
+    }
 }
 
 // lets the user draw an ellipse
-function circle(e) {
+Whiteboard.prototype.circle = function (e) {
     if(e.buttons) {
-        if(!wb.drawingNewShape) {
-            wb.currentLine = new Ellipse(activeColor, fillShapes, wb.penSize, {x: e.offsetX, y: e.offsetY}, null);
-            wb.drawingNewShape = true;
+        if(!this.drawingNewShape) {
+            this.currentLine = new Ellipse(activeColor, fillShapes, this.penSize, {x: e.offsetX, y: e.offsetY}, null);
+            this.drawingNewShape = true;
             return;
         }
-        wb.ctx.putImageData(wb.imageData, 0, 0);
-        let radiusX = Math.abs(wb.currentLine.origin.x - e.offsetX);
-        let radiusY = Math.abs(wb.currentLine.origin.y - e.offsetY);
+        this.ctx.putImageData(this.imageData, 0, 0);
+        let radiusX = Math.abs(this.currentLine.origin.x - e.offsetX);
+        let radiusY = Math.abs(this.currentLine.origin.y - e.offsetY);
         if(e.ctrlKey) {
             radiusX <= radiusY ? radiusY = radiusX : radiusX = radiusY;
         }
-        wb.currentLine.radius = {x: radiusX, y: radiusY};
-        wb.currentLine.draw();
+        this.currentLine.radius = {x: radiusX, y: radiusY};
+        this.currentLine.draw(this);
     } else {
-        if(wb.currentLine != null) {
-            wb.drawingNewShape = false;
-            wb.drawings().push(wb.currentLine);
-            wb.imageData = wb.ctx.getImageData(0,0,wb.canvas.width,wb.canvas.height);
+        if(this.currentLine != null) {
+            this.drawingNewShape = false;
+            this.drawings().push(this.currentLine);
+            this.imageData = this.ctx.getImageData(0,0,this.canvas.width,this.canvas.height);
         }
-        wb.currentLine = null;
+        this.currentLine = null;
     }
 }
 
+
+/* ------------------------------------- */
+/* ---------- Other Functions ---------- */
+/* ------------------------------------- */
+
 // Creates a pointer by drawing a red dot at the mouse postion and drawing a tail
 // TODO: move second last pointer to whiteboard object
-function pointer(e) {
+Whiteboard.prototype.pointer = function (e) {
     //use snapshot to make canvas
-    wb.ctx.putImageData(wb.imageData, 0, 0);
+    this.ctx.putImageData(this.imageData, 0, 0);
 
-    var grd = wb.ctx.createRadialGradient(e.offsetX, e.offsetY, 1, e.offsetX, e.offsetY, 10);
+    var grd = this.ctx.createRadialGradient(e.offsetX, e.offsetY, 1, e.offsetX, e.offsetY, 10);
     grd.addColorStop(0, "red");
     grd.addColorStop(1, "rgba(255, 0, 0, 0)");
 
-    wb.ctx.beginPath();
-    wb.ctx.arc(e.offsetX, e.offsetY, 10, 0, 2*Math.PI);
-    wb.ctx.fillStyle = grd;
-    wb.ctx.fill();
+    this.ctx.beginPath();
+    this.ctx.arc(e.offsetX, e.offsetY, 10, 0, 2*Math.PI);
+    this.ctx.fillStyle = grd;
+    this.ctx.fill();
 
-    if(!wb.lastPoint) {
-        wb.lastPoint = {x: e.offsetX, y: e.offsetY};
+    if(!this.lastPoint) {
+        this.lastPoint = {x: e.offsetX, y: e.offsetY};
         return;
     }
-    if(!wb.secondLastPoint) {
-        wb.secondLastPoint = wb.lastPoint;
-        wb.lastPoint = {x: e.offsetX, y: e.offsetY};
+    if(!this.secondLastPoint) {
+        this.secondLastPoint = this.lastPoint;
+        this.lastPoint = {x: e.offsetX, y: e.offsetY};
         return;
     }
-    wb.ctx.beginPath();
-    wb.ctx.moveTo(wb.secondLastPoint.x, wb.secondLastPoint.y);
-    wb.ctx.lineTo(wb.lastPoint.x, wb.lastPoint.y);
-    wb.ctx.lineTo(e.offsetX, e.offsetY);
-    wb.ctx.strokeStyle = "rgba(255, 0, 0, 0.2)";
-    wb.ctx.lineWidth = 3;
-    wb.ctx.lineCap = "round";
-    wb.ctx.stroke();
-    wb.secondLastPoint = wb.lastPoint;
-    wb.lastPoint = {x: e.offsetX, y: e.offsetY};
+    this.ctx.beginPath();
+    this.ctx.moveTo(this.secondLastPoint.x, this.secondLastPoint.y);
+    this.ctx.lineTo(this.lastPoint.x, this.lastPoint.y);
+    this.ctx.lineTo(e.offsetX, e.offsetY);
+    this.ctx.strokeStyle = "rgba(255, 0, 0, 0.2)";
+    this.ctx.lineWidth = 3;
+    this.ctx.lineCap = "round";
+    this.ctx.stroke();
+    this.secondLastPoint = this.lastPoint;
+    this.lastPoint = {x: e.offsetX, y: e.offsetY};
     
 }
 
 
 // simulates an eraser by drawing with the same color as the canvas background
-function erase(e) {
+Whiteboard.prototype.erase = function (e) {
 
-    let eraserSize = wb.penSize*4;
+    let eraserSize = this.penSize*4;
 
-    wb.hardRefresh();
+    this.hardRefresh();
 
     if(e.buttons) {
         // if newline
-        if(!wb.lastPoint) {
-            wb.drawings().push(wb.currentLine);
-            wb.currentLine = {type: "poly", color: "white", lineWidth: wb.penSize*4, points: []};
-            wb.lastPoint = {x: e.offsetX, y: e.offsetY};
-            wb.currentLine.points.push(wb.lastPoint);
+        if(!this.drawingNewShape) {
+            this.currentLine = new Polyline("white", eraserSize, []);
+            this.lastPoint = {x: e.offsetX, y: e.offsetY};
+            this.currentLine.points.push(this.lastPoint);
+            wb.drawingNewShape = true;
             return;
         }
-        // else if continuing current line
-        wb.ctx.beginPath();
-        wb.ctx.moveTo(wb.lastPoint.x, wb.lastPoint.y);
-        wb.ctx.lineTo(e.offsetX, e.offsetY);
-        wb.ctx.strokeStyle = "white"/*canvas.style.backgroundColor*/;
-        wb.ctx.lineWidth = eraserSize;
-        wb.ctx.lineCap = "round";
-        wb.ctx.stroke();
-        wb.lastPoint = {x: e.offsetX, y: e.offsetY};
-        wb.currentLine.points.push(wb.lastPoint);
+        this.lastPoint = {x: e.offsetX, y: e.offsetY};
+        this.currentLine.points.push(this.lastPoint);
+        this.currentLine.draw(this);
     } else {
-        wb.lastPoint = null;
+        if(this.currentLine != null) {
+            this.drawingNewShape = false;
+            this.drawings().push(this.currentLine);
+            this.imageData = wb.ctx.getImageData(0,0,this.canvas.width,this.canvas.height);
+        }
+        this.currentLine = null;
     }
 
-    wb.ctx.beginPath();
-    wb.ctx.arc(e.offsetX, e.offsetY, eraserSize/2+1, 0, 2*Math.PI);
-    wb.ctx.strokeStyle = "grey";
-    wb.ctx.lineWidth = 1;
-    wb.ctx.setLineDash([5,5]);
-    wb.ctx.stroke();
-    wb.ctx.setLineDash([]);
+    this.ctx.beginPath();
+    this.ctx.arc(e.offsetX, e.offsetY, eraserSize/2+1, 0, 2*Math.PI);
+    this.ctx.strokeStyle = "grey";
+    this.ctx.lineWidth = 1;
+    this.ctx.setLineDash([5,5]);
+    this.ctx.stroke();
+    this.ctx.setLineDash([]);
     
 }
 
@@ -629,78 +670,19 @@ function erase(e) {
 //  - selection border should take into account line thickness of the shapes
 
 
-// Returns with topmost object the user clicks on if they clicked on an object (an ellipse or )
-function hasClickedShape(e) {
-    if(e.buttons) {
-        for(var i = wb.drawings().length - 1; i >= 0; i--) {
-            let object = wb.drawings()[i];
-            if(object.isWithin({x: e.offsetX, y: e.offsetY})) {
-                selectObjectLayer = i;
-                return object;
-            }
+// Returns with topmost object the user clicks on if they clicked on an object
+Whiteboard.prototype.clickedShape = function ({x, y}) {
+    for(var i = this.drawings().length - 1; i >= 0; i--) {
+        let object = this.drawings()[i];
+        if(object.isWithin({x: x, y: y})) {
+            selectObjectLayer = i;
+            return object;
         }
-        //if(!inMotion && !inMotionResize) return null;
     }
 }
-
-
-// Draws the resize nodes on the corners of the rectangle
-function drawEditSelectors(selectedObject) {
-    
-    let origin, offset, editPoints;
-
-    if(selectedObject.constructor.name == "Ellipse") {
-        origin = {x: selectedObject.origin.x-selectedObject.radius.x, y: selectedObject.origin.y-selectedObject.radius.y};
-        offset = {x: selectedObject.radius.x*2, y: selectedObject.radius.y*2};
-    } else if(selectedObject.constructor.name == "Rectangle") {
-        origin = {x: selectedObject.origin.x, y: selectedObject.origin.y};
-        offset = {x: selectedObject.offset.x, y: selectedObject.offset.y};
-    } else if(selectedObject.constructor.name == "Line") {
-        origin = {x: selectedObject.origin.x, y: selectedObject.origin.y};
-        offset = {x: selectedObject.offset.x-selectedObject.origin.x, y: selectedObject.offset.y-selectedObject.origin.y};
-    }
-
-    let selectorRadius = 5;
-    let borderRadius = selectedObject.lineWidth;
-    if(selectedObject.constructor.name == "Line") {
-        editPoints = [
-            {x: origin.x, y: origin.y},
-            {x: origin.x+offset.x, y: origin.y+offset.y},
-        ];
-    } else {
-        editPoints = [
-            {x: origin.x, y: origin.y},
-            {x: origin.x+offset.x, y: origin.y},
-            {x: origin.x+offset.x/2, y: origin.y},
-            {x: origin.x, y: origin.y+offset.y},
-            {x: origin.x+offset.x, y: origin.y+offset.y},
-            {x: origin.x+offset.x/2, y: origin.y+offset.y},
-            {x: origin.x, y: origin.y+offset.y/2},
-            {x: origin.x+offset.x, y: origin.y+offset.y/2},
-        ];
-    }
-    
-
-    wb.ctx.strokeStyle = "black";
-    wb.ctx.fillStyle = "grey";
-    wb.ctx.lineWidth = 1;
-
-    wb.ctx.beginPath();
-    wb.ctx.rect(origin.x, origin.y, offset.x, offset.y);
-    wb.ctx.stroke();
-
-    for(let node of editPoints) {
-        wb.ctx.beginPath();
-        wb.ctx.arc(node.x, node.y, selectorRadius, 0, 2*Math.PI);
-        wb.ctx.fill();
-        wb.ctx.stroke();
-    }
-}
-
-
 
 // Changes the cursor icon depending on where on the rectangle the user hovers
-function changeIcon(e, selectedObject) {
+Whiteboard.prototype.changeIcon = function (e, selectedObject) {
     
     let origin, offset, editPoints;
 
@@ -846,7 +828,7 @@ function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
                 break;
         }
         wb.hardRefresh();
-        drawEditSelectors(selectedObject);
+        selectedObject.drawEditSelectors();
     } else {
         inMotionResize = false;
     }
@@ -881,7 +863,7 @@ function resizeCircleFromPoint(e, ctrlPoint, selectedObject) {
                 break;
         }
         wb.hardRefresh();
-        drawEditSelectors(selectedObject);
+        selectedObject.drawEditSelectors();
     } else {
         inMotionResize = false;
     }
@@ -905,7 +887,7 @@ function resizeLineFromPoint(e, ctrlPoint, selectedObject) {
                 break;
         }
         wb.hardRefresh();
-        drawEditSelectors(selectedObject);
+        selectedObject.drawEditSelectors(selectedObject);
     } else {
         inMotionResize = false;
     }
@@ -945,7 +927,7 @@ function moveShapeToCursor(e, selectedObject) {
             selectedObject.offset.y = selectedObject.origin.y + offsetY;
         }
         wb.hardRefresh();
-        drawEditSelectors(selectedObject);
+        selectedObject.drawEditSelectors();
     } else {
         cursorOffsetFromOrigin = null;
         inMotion = false;
@@ -957,12 +939,14 @@ var selectObjectLayer = null;
 var prevObjectLayer = null;
 var selectObject = null;
 function moveShape(e) {
-    var selectedObject = hasClickedShape(e);
+    if(e.buttons) {
+        var selectedObject = wb.clickedShape({x: e.offsetX, y: e.offsetY});
+    }
     if((selectObject == null || prevObjectLayer != selectObjectLayer) && !inMotion && !inMotionResize) {
         prevObjectLayer = selectObjectLayer;
         selectObject = selectedObject;
     }
-    if(selectObject != null) changeIcon(e, selectObject);
+    if(selectObject != null) wb.changeIcon(e, selectObject);
 }
 
 //Creates text boxes which can be typed into and dragged around
