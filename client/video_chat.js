@@ -1107,7 +1107,8 @@ function populateDrawBar2() {
         "text",
         "overlay",
         "gg-controller",
-        "imageInsert",
+        //"imageInsert",
+        "gg-image",
         "gg-erase",
         "gg-trash"
     ];
@@ -1196,6 +1197,9 @@ function populateDrawBar2() {
                     break;
                 case "gg-controller":
                     menuBtn.addEventListener("click", moveObject, false);
+                    break;
+                case "gg-image":
+                    menuBtn.addEventListener("click", pickImage, false);
                     break;
                 case "gg-trash":
                     menuBtn.addEventListener("click", clearCanvas, false);
