@@ -41,6 +41,8 @@ function showCamera() {
 /* ----------------------------------------------- */
 
 let wb = new Whiteboard("canvas");
+wb.activeColor = "#4198e9";
+wb.activeSecondaryColor = "#a3c4e3";
 
 // resize the canvas based on the window size and center the whiteboard menu vertically in the canvas
 function resize() {
@@ -121,7 +123,7 @@ function Whiteboard(canvasId) {
     this.drawingNewShape = false;
     this.imageData;
 
-    this.penSize = 5;
+    this.penSize = 2;
     this.textLastPoint;
     this.canvasFunction;
     this.lastPoint;
@@ -136,8 +138,9 @@ function Whiteboard(canvasId) {
     this.ctrlPointInUse;
     this.inMotionResize = false;
 
-    /* this.activeColor;
-    this.activeSecondaryColor; */
+    this.activeColor;
+    this.activeSecondaryColor;
+    this.fillShapes = true;
 }
 
 // Returns the current array of drawings
@@ -147,8 +150,7 @@ Whiteboard.prototype.drawings = function() { return this.pages[this.currentPage-
 Whiteboard.prototype.textBoxes = function() { return this.pages[this.currentPage-1].curTextBoxes }
 
 // Loads the next page or creates a new page
-Whiteboard.prototype.nextPage = function() {
-    // TODO: this function references a HTML element out of the scope
+Whiteboard.prototype.nextPage = function(counterId) {
     // TODO: mabye should save image data after new page loads
     let numPages = this.pages.length;
     this.currentPage += 1;
@@ -159,12 +161,11 @@ Whiteboard.prototype.nextPage = function() {
         this.ctx.clearRect(0, 0, canvas.width, canvas.height);
         numPages += 1;
     }
-    document.getElementById("pageCount").textContent = (this.currentPage) + "/" + numPages;
+    if(counterId) document.getElementById(counterId).textContent = (this.currentPage) + "/" + numPages;
 }
 
 // Loads the previous page if possible
-Whiteboard.prototype.prevPage = function() {
-    // TODO: this function references a HTML element out of the scope
+Whiteboard.prototype.prevPage = function(counterId) {
     // TODO: mabye should save image data after new page loads
     let numPages = this.pages.length;
     if(this.currentPage - 1 > 0) {
@@ -173,7 +174,7 @@ Whiteboard.prototype.prevPage = function() {
     } else {
         return;
     }
-    document.getElementById("pageCount").textContent = (this.currentPage) + "/" + numPages;
+    if(counterId) document.getElementById(counterId).textContent = (this.currentPage) + "/" + numPages;
 }
 
 // refreshes the screen by redrawing all items
@@ -243,27 +244,25 @@ Polyline.prototype.draw = function(wbl) {
 
 // Draws a line using the mouse position and stores the line for later use
 Whiteboard.prototype.pen = function (e) {
-    // TODO: organize this like the other ones
     if(e.buttons) {
         // if newline
-        if(!this.lastPoint) {
-            this.ctx.strokeStyle = activeColor;
-            this.ctx.lineWidth = this.penSize;
-            this.ctx.lineCap = "round";
-            this.drawings().push(this.currentLine);
+        if(!this.drawingNewShape) {
+            this.currentLine = new Polyline(this.activeColor, this.penSize, []);
             this.lastPoint = {x: e.offsetX, y: e.offsetY};
-            this.currentLine = new Polyline(activeColor, this.penSize, [this.lastPoint]);
+            this.currentLine.points.push(this.lastPoint);
+            this.drawingNewShape = true;
             return;
         }
-        // else if continuing current line
-        this.ctx.beginPath();
-        this.ctx.moveTo(this.lastPoint.x, this.lastPoint.y);
-        this.ctx.lineTo(e.offsetX, e.offsetY);
-        this.ctx.stroke();
         this.lastPoint = {x: e.offsetX, y: e.offsetY};
         this.currentLine.points.push(this.lastPoint);
+        this.currentLine.draw(this);
     } else {
-        this.lastPoint = null;
+        if(this.currentLine != null) {
+            this.drawingNewShape = false;
+            this.drawings().push(this.currentLine);
+            this.imageData = this.ctx.getImageData(0,0,this.canvas.width,this.canvas.height);
+        }
+        this.currentLine = null;
     }
 }
 
@@ -333,7 +332,7 @@ Line.prototype.drawEditSelectors = function (wbl) {
 Whiteboard.prototype.line = function (e) {
     if(e.buttons) {
         if(!this.drawingNewShape) {
-            this.currentLine = new Line(activeColor, this.penSize, {x: e.offsetX, y: e.offsetY}, null);
+            this.currentLine = new Line(this.activeColor, this.penSize, {x: e.offsetX, y: e.offsetY}, null);
             this.drawingNewShape = true;
             return;
         }
@@ -471,9 +470,9 @@ Whiteboard.prototype.rectangle = function (e) {
         }
         this.ctx.beginPath();
         this.ctx.rect(this.lastPoint.x, this.lastPoint.y, offsetX, offsetY);
-        this.ctx.strokeStyle = activeColor;
-        if(fillShapes) {
-            this.ctx.fillStyle = activeSecondaryColor;
+        this.ctx.strokeStyle = this.activeColor;
+        if(this.fillShapes) {
+            this.ctx.fillStyle = this.activeSecondaryColor;
             this.ctx.fill();
         }
         this.ctx.lineWidth = this.penSize;
@@ -481,7 +480,7 @@ Whiteboard.prototype.rectangle = function (e) {
         this.ctx.stroke();
     } else {
         if(this.lastPoint != null) {
-            let newRectObject = new Rectangle(activeColor, fillShapes, this.penSize, this.lastPoint, {x: e.offsetX-this.lastPoint.x, y: e.offsetY-this.lastPoint.y});
+            let newRectObject = new Rectangle(this.activeColor, this.fillShapes, this.penSize, this.lastPoint, {x: e.offsetX-this.lastPoint.x, y: e.offsetY-this.lastPoint.y});
             this.drawings().push(newRectObject);
             this.imageData = this.ctx.getImageData(0,0,this.canvas.width,this.canvas.height);
         }
@@ -568,7 +567,7 @@ Ellipse.prototype.drawEditSelectors = function (wbl) {
 Whiteboard.prototype.circle = function (e) {
     if(e.buttons) {
         if(!this.drawingNewShape) {
-            this.currentLine = new Ellipse(activeColor, fillShapes, this.penSize, {x: e.offsetX, y: e.offsetY}, null);
+            this.currentLine = new Ellipse(this.activeColor, this.fillShapes, this.penSize, {x: e.offsetX, y: e.offsetY}, null);
             this.drawingNewShape = true;
             return;
         }
@@ -596,7 +595,6 @@ Whiteboard.prototype.circle = function (e) {
 /* ------------------------------------- */
 
 // Creates a pointer by drawing a red dot at the mouse postion and drawing a tail
-// TODO: move second last pointer to whiteboard object
 Whiteboard.prototype.pointer = function (e) {
     //use snapshot to make canvas
     this.ctx.putImageData(this.imageData, 0, 0);
@@ -646,7 +644,7 @@ Whiteboard.prototype.erase = function (e) {
             this.currentLine = new Polyline("white", eraserSize, []);
             this.lastPoint = {x: e.offsetX, y: e.offsetY};
             this.currentLine.points.push(this.lastPoint);
-            wb.drawingNewShape = true;
+            this.drawingNewShape = true;
             return;
         }
         this.lastPoint = {x: e.offsetX, y: e.offsetY};
@@ -656,7 +654,7 @@ Whiteboard.prototype.erase = function (e) {
         if(this.currentLine != null) {
             this.drawingNewShape = false;
             this.drawings().push(this.currentLine);
-            this.imageData = wb.ctx.getImageData(0,0,this.canvas.width,this.canvas.height);
+            this.imageData = this.ctx.getImageData(0,0,this.canvas.width,this.canvas.height);
         }
         this.currentLine = null;
     }
@@ -1041,8 +1039,6 @@ function overlay() {
 const drawColors = ["#4198e9", "#e94b41", "#e9b041", "#44e941", "#b341e9", "#000000"];
 const secondaryColors = ["#a3c4e3", "#eba4a0", "#ebd3a4", "#a0ed9f", "#d2a0eb", "#e6e6e6"];
 
-var activeColor = "#4198e9";
-var activeSecondaryColor = "#a3c4e3";
 var activeDot = null;
 
 const rgb2hex = (rgb) => `#${rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/).slice(1).map(n => parseInt(n, 10).toString(16).padStart(2, '0')).join('')}`;
@@ -1059,8 +1055,6 @@ function populateDrawBar2() {
     let buttons = [
         "gg-pen",
         "gg-border-style-solid",
-        /*"gg-shape-square",
-        "gg-shape-circle",*/
         "colorRect",
         "pointer",
         "gg-arrow-left",
@@ -1213,12 +1207,12 @@ function showOverlay(e) {
 //Using changeCanvasFunction in case of unfilled textbox
 function goToNextPage() {
     changeCanvasFunction("nextPage");
-    wb.nextPage();
+    wb.nextPage("pageCount");
 }
 
 function goToPrevPage() {
     changeCanvasFunction("prevPage");
-    wb.prevPage();
+    wb.prevPage("pageCount");
 }
 
 function rectangleDraw(e) {
@@ -1258,7 +1252,7 @@ function colorsDropDown(e) {
     if(menuList.length == 0) {
         let info = btn.getBoundingClientRect();
         for(let i = 1; i <= drawColors.length; i++) {
-            if(drawColors[i-1] != activeColor) {
+            if(drawColors[i-1] != wb.activeColor) {
                 menuBtn = document.createElement("div");
                 menuBtn.id = drawColors[i-1];
                 menuBtn.classList.add("canvasBtnAbs");
@@ -1286,13 +1280,13 @@ function colorsDropDown(e) {
 
 function changeColor(e) {
     let color = e.currentTarget.id;
-    activeColor = color;
-    activeSecondaryColor = secondaryColors[drawColors.indexOf(activeColor)];
+    wb.activeColor = color;
+    wb.activeSecondaryColor = secondaryColors[drawColors.indexOf(wb.activeColor)];
     for(let element of menuList) {
         element.remove();
     }
     menuList = [];
-    activeColorDiv.children[0].style.backgroundColor = activeColor;
+    activeColorDiv.children[0].style.backgroundColor = wb.activeColor;
 }
 
 var menuOpen = false;
@@ -1356,7 +1350,6 @@ let shapesList = ["gg-border-style-solid","gg-shape-square","gg-shape-circle",];
 let menuShapeList = [];
 let activeShapeDiv = null;
 let activeShape = null;
-let fillShapes = true;
 function shapesDropdown(e) {
     let menuBtn, shapeChoice;
     let btn = e.currentTarget;
@@ -1404,7 +1397,7 @@ function shapesDropdown(e) {
         text.style.fontSize = "18px";
         shapeChoice = document.createElement("INPUT");
         shapeChoice.setAttribute("type", "checkbox");
-        shapeChoice.checked = fillShapes;
+        shapeChoice.checked = wb.fillShapes;
         div.appendChild(shapeChoice);
         div.appendChild(text);
         menuBtn.appendChild(div);
@@ -1420,8 +1413,7 @@ function shapesDropdown(e) {
 }
 
 function setFillStatus(e) {
-    fillShapes = e.currentTarget.checked;
-    console.log(fillShapes);
+    wb.fillShapes = e.currentTarget.checked;
 }
 
 function lineDrawActive(e) {
