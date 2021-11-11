@@ -469,7 +469,7 @@ function hasClickedShape(e) {
     if(e.buttons) {
         for(var i = drawings.length - 1; i >= 0; i--) {
             let object = drawings[i];
-            if(object.type == "rect" || object.type == "image" && withinRectangleBounds(e, object)) {
+            if((object.type == "rect" || object.type == "image") && withinRectangleBounds(e, object)) {
                 selectObjectLayer = i;
                 return object;
             } else
@@ -836,7 +836,17 @@ function moveShape2(e) {
         prevObjectLayer = selectObjectLayer;
         selectObject = selectedObject;
     }
-    if(selectObject != null) changeIcon(e, selectObject);
+    if(selectObject != null) {
+        // console.log(drwdrawings.reverse().findIndex((element) => element == selectObject));
+        for(var i = drawings.length - 1; i >= 0; i--) {
+            if (drawings[i] == selectObject) {
+                drawings.splice(i, 1);
+                drawings.push(selectObject);
+                break;
+            }
+        }
+        changeIcon(e, selectObject);
+    }
 }
 
 
