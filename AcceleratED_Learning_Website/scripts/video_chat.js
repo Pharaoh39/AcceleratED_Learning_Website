@@ -93,7 +93,7 @@ function move(e) {
             wb.circle(e);
             break;
         case "move":
-            moveShape(e);
+            wb.moveShape(e);
             break;
         case "erase":
             wb.erase(e);
@@ -126,6 +126,18 @@ function Whiteboard(canvasId) {
     this.canvasFunction;
     this.lastPoint;
     this.secondLastPoint;
+
+    this.selectObejctLayer;
+    this.prevObjectLayer;
+    this.selectObject;
+
+    this.inMotion;
+    this.cursorOffsetFromOrigin;
+    this.ctrlPointInUse;
+    this.inMotionResize = false;
+
+    /* this.activeColor;
+    this.activeSecondaryColor; */
 }
 
 // Returns the current array of drawings
@@ -675,7 +687,7 @@ Whiteboard.prototype.clickedShape = function ({x, y}) {
     for(var i = this.drawings().length - 1; i >= 0; i--) {
         let object = this.drawings()[i];
         if(object.isWithin({x: x, y: y})) {
-            selectObjectLayer = i;
+            this.selectObjectLayer = i;
             return object;
         }
     }
@@ -720,43 +732,41 @@ Whiteboard.prototype.changeIcon = function (e, selectedObject) {
     for(let node of editPoints) {
         let distanceFromNode = Math.ceil(Math.sqrt(Math.pow(e.offsetX-node.x, 2) + Math.pow(e.offsetY-node.y, 2)));
         if(distanceFromNode <= selectBound) {
-            canvas.style.cursor = node.cursor;
-            ctrlPointInUse = node.name;
-            resizeRectFromPoint(e, node.name, selectedObject);
+            this.canvas.style.cursor = node.cursor;
+            this.ctrlPointInUse = node.name;
+            this.resizeRectFromPoint(e, node.name, selectedObject);
             return;
         }
     }
-    if(inMotionResize) {
-        resizeRectFromPoint(e, ctrlPointInUse, selectedObject);
+    if(this.inMotionResize) {
+        this.resizeRectFromPoint(e, this.ctrlPointInUse, selectedObject);
         return;
     }
 
     if(origin.x <= e.offsetX && origin.x+offset.x >= e.offsetX && origin.y <= e.offsetY && origin.y+offset.y >= e.offsetY) {
-        canvas.style.cursor = "all-scroll";
-        moveShapeToCursor(e, selectedObject);
+        this.canvas.style.cursor = "all-scroll";
+        this.moveShapeToCursor(e, selectedObject);
         return;
     }
-    if(inMotion) {
-        canvas.style.cursor = "all-scroll";
-        moveShapeToCursor(e, selectedObject);
+    if(this.inMotion) {
+        this.canvas.style.cursor = "all-scroll";
+        this.moveShapeToCursor(e, selectedObject);
         return;
     }
 
-    canvas.style.cursor = "default";
+    this.canvas.style.cursor = "default";
 }
 
 
 // Resizes the rectangle from one of the control points
 // TODO: should only enter this function if you have button down!
-var ctrlPointInUse = null;
-var inMotionResize = false;
-function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
+Whiteboard.prototype.resizeRectFromPoint = function (e, ctrlPoint, selectedObject) {
 
     if(selectedObject.constructor.name == "Ellipse") {
-        resizeCircleFromPoint(e, ctrlPoint, selectedObject);
+        this.resizeCircleFromPoint(e, ctrlPoint, selectedObject);
         return;
     } else if(selectedObject.constructor.name == "Line") {
-        resizeLineFromPoint(e, ctrlPoint, selectedObject);
+        this.resizeLineFromPoint(e, ctrlPoint, selectedObject);
         return;
     }
 
@@ -764,7 +774,7 @@ function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
     const offset = selectedObject.offset;
 
     if(e.buttons) {
-        if(!inMotionResize) inMotionResize = true;
+        if(!this.inMotionResize) this.inMotionResize = true;
         switch(ctrlPoint) {
             case "top-left":
                 offset.x = (origin.x - e.offsetX) + offset.x;
@@ -827,21 +837,21 @@ function resizeRectFromPoint(e, ctrlPoint, selectedObject) {
                 offset.x = Math.abs(origin.x - e.offsetX);
                 break;
         }
-        wb.hardRefresh();
-        selectedObject.drawEditSelectors();
+        this.hardRefresh();
+        selectedObject.drawEditSelectors(this);
     } else {
-        inMotionResize = false;
+        this.inMotionResize = false;
     }
 }
 
 // resizes the ellipse from one of the control points
-function resizeCircleFromPoint(e, ctrlPoint, selectedObject) {
+Whiteboard.prototype.resizeCircleFromPoint = function (e, ctrlPoint, selectedObject) {
 
     const origin = selectedObject.origin;
     const offset = selectedObject.radius;
 
     if(e.buttons) {
-        if(!inMotionResize) inMotionResize = true;
+        if(!this.inMotionResize) this.inMotionResize = true;
         switch(ctrlPoint) {
             case "top-left":
             case "top-right":
@@ -862,20 +872,21 @@ function resizeCircleFromPoint(e, ctrlPoint, selectedObject) {
                 offset.x = Math.abs(origin.x - e.offsetX);
                 break;
         }
-        wb.hardRefresh();
-        selectedObject.drawEditSelectors();
+        this.hardRefresh();
+        selectedObject.drawEditSelectors(this);
     } else {
-        inMotionResize = false;
+        this.inMotionResize = false;
     }
 }
 
-function resizeLineFromPoint(e, ctrlPoint, selectedObject) {
+// resizes the line from one of the control points
+Whiteboard.prototype.resizeLineFromPoint = function (e, ctrlPoint, selectedObject) {
 
     const origin = selectedObject.origin;
     const offset = selectedObject.offset;
 
     if(e.buttons) {
-        if(!inMotionResize) inMotionResize = true;
+        if(!this.inMotionResize) this.inMotionResize = true;
         switch(ctrlPoint) {
             case "top-left":
                 origin.x = e.offsetX;
@@ -886,67 +897,62 @@ function resizeLineFromPoint(e, ctrlPoint, selectedObject) {
                 offset.y = e.offsetY;
                 break;
         }
-        wb.hardRefresh();
-        selectedObject.drawEditSelectors(selectedObject);
+        this.hardRefresh();
+        selectedObject.drawEditSelectors(this);
     } else {
-        inMotionResize = false;
+        this.inMotionResize = false;
     }
 }
 
 
 // Moves the selected shape to the cursor
-var cursorOffsetFromOrigin = null;
-var inMotion = false;
-function moveShapeToCursor(e, selectedObject) {
+Whiteboard.prototype.moveShapeToCursor = function(e, selectedObject) {
 
     if(e.buttons) {
-        if(cursorOffsetFromOrigin == null) {
-            cursorOffsetFromOrigin = {x: e.offsetX-selectedObject.origin.x, y: e.offsetY-selectedObject.origin.y};
-            inMotion = true;
+        if(this.cursorOffsetFromOrigin == null) {
+            this.cursorOffsetFromOrigin = {x: e.offsetX-selectedObject.origin.x, y: e.offsetY-selectedObject.origin.y};
+            this.inMotion = true;
             return;
         }
         let offsetX, offsetY;
         if(selectedObject.constructor.name == "Rectangle") {
             offsetX = selectedObject.offset.x-selectedObject.origin.x;
             offsetY = selectedObject.offset.y-selectedObject.origin.y;
-            selectedObject.origin.x = e.offsetX - cursorOffsetFromOrigin.x;
-            selectedObject.origin.y = e.offsetY - cursorOffsetFromOrigin.y;
+            selectedObject.origin.x = e.offsetX - this.cursorOffsetFromOrigin.x;
+            selectedObject.origin.y = e.offsetY - this.cursorOffsetFromOrigin.y;
         } else
         if(selectedObject.constructor.name == "Ellipse") {
             offsetX = selectedObject.radius.x-selectedObject.origin.x;
             offsetY = selectedObject.radius.y-selectedObject.origin.y;
-            selectedObject.origin.x = e.offsetX - cursorOffsetFromOrigin.x;
-            selectedObject.origin.y = e.offsetY - cursorOffsetFromOrigin.y;
+            selectedObject.origin.x = e.offsetX - this.cursorOffsetFromOrigin.x;
+            selectedObject.origin.y = e.offsetY - this.cursorOffsetFromOrigin.y;
         } else
         if(selectedObject.constructor.name == "Line") {
             offsetX = selectedObject.offset.x-selectedObject.origin.x;
             offsetY = selectedObject.offset.y-selectedObject.origin.y;
-            selectedObject.origin.x = e.offsetX - cursorOffsetFromOrigin.x;
-            selectedObject.origin.y = e.offsetY - cursorOffsetFromOrigin.y;
+            selectedObject.origin.x = e.offsetX - this.cursorOffsetFromOrigin.x;
+            selectedObject.origin.y = e.offsetY - this.cursorOffsetFromOrigin.y;
             selectedObject.offset.x = selectedObject.origin.x + offsetX;
             selectedObject.offset.y = selectedObject.origin.y + offsetY;
         }
-        wb.hardRefresh();
-        selectedObject.drawEditSelectors();
+        this.hardRefresh();
+        selectedObject.drawEditSelectors(this);
     } else {
-        cursorOffsetFromOrigin = null;
-        inMotion = false;
+        this.cursorOffsetFromOrigin = null;
+        this.inMotion = false;
     }
 }
 
 
-var selectObjectLayer = null;
-var prevObjectLayer = null;
-var selectObject = null;
-function moveShape(e) {
+Whiteboard.prototype.moveShape = function(e) {
     if(e.buttons) {
-        var selectedObject = wb.clickedShape({x: e.offsetX, y: e.offsetY});
+        var selectedObject = this.clickedShape({x: e.offsetX, y: e.offsetY});
     }
-    if((selectObject == null || prevObjectLayer != selectObjectLayer) && !inMotion && !inMotionResize) {
-        prevObjectLayer = selectObjectLayer;
-        selectObject = selectedObject;
+    if((this.selectObject == null || this.prevObjectLayer != this.selectObjectLayer) && !this.inMotion && !this.inMotionResize) {
+        this.prevObjectLayer = this.selectObjectLayer;
+        this.selectObject = selectedObject;
     }
-    if(selectObject != null) wb.changeIcon(e, selectObject);
+    if(this.selectObject != null) this.changeIcon(e, this.selectObject);
 }
 
 //Creates text boxes which can be typed into and dragged around
@@ -1112,15 +1118,6 @@ function populateDrawBar2() {
                 case "gg-pen":
                     menuBtn.addEventListener("click", enablePen, false);
                     break;
-                /*case "gg-shape-square":
-                    menuBtn.addEventListener("click", rectangleDraw, false);
-                    break;
-                case "gg-shape-circle":
-                    menuBtn.addEventListener("click", circleDraw, false);
-                    break;
-                case "gg-border-style-solid":
-                    menuBtn.addEventListener("click", lineDraw, false);
-                    break;*/
                 case "gg-border-style-solid":
                     menuBtn.addEventListener("click", lineDraw/*shapesDropdown*/, false);
                     menuBtn.addEventListener("dblclick", shapesDropdown, false);
